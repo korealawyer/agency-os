@@ -1,0 +1,690 @@
+// prisma/schema.prisma
+// Agency OS — 네이버 검색광고 AI 관리 플랫폼
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // Prisma 7: url/directUrl은 prisma.config.ts에서 설정
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  owner
+  admin
+  editor
+  viewer
+}
+
+enum PlanType {
+  personal
+  starter
+  growth
+  scale
+  enterprise
+}
+
+enum SubscriptionStatus {
+  trialing
+  active
+  past_due
+  canceled
+  paused
+}
+
+enum ConnectionStatus {
+  connected
+  disconnected
+  error
+  pending
+}
+
+enum BidStrategy {
+  target_rank
+  target_cpc
+  target_roas
+  max_conversion
+  time_based
+  manual
+}
+
+enum CampaignStatus {
+  active
+  paused
+  ended
+  draft
+}
+
+enum CampaignType {
+  WEB_SITE
+  SHOPPING
+  BRAND_SEARCH
+  PERFORMANCE_MAX
+}
+
+enum MatchType {
+  exact
+  phrase
+  broad
+}
+
+enum DeviceType {
+  pc
+  mobile
+}
+
+enum NotificationType {
+  bid_change
+  report_sent
+  api_error
+  budget_alert
+  system_notice
+  anomaly_detected
+  competitor_change
+  churn_prediction
+}
+
+enum NotificationPriority {
+  urgent
+  high
+  normal
+  low
+}
+
+enum AiActionType {
+  bid_adjustment
+  keyword_recommendation
+  report_generation
+  anomaly_alert
+  creative_suggestion
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  EXPORT
+}
+
+enum ChangedBy {
+  ai
+  manual
+  system
+}
+
+enum ScheduleType {
+  weekly
+  monthly
+}
+
+enum FraudStatus {
+  pending
+  confirmed
+  dismissed
+}
+
+enum BlockReason {
+  rule_based
+  ml_detected
+  manual
+}
+
+// ============================================================
+// 핵심 엔티티
+// ============================================================
+
+/// 조직 (멀티 테넌시 핵심)
+model Organization {
+  id             String   @id @default(uuid())
+  name           String   @db.VarChar(200)
+  planType       PlanType @default(starter) @map("plan_type")
+  totalAdSpend   Decimal  @default(0) @map("total_ad_spend") @db.Decimal(15, 2)
+  businessNumber String?  @map("business_number") @db.VarChar(20)
+  contactEmail   String?  @map("contact_email") @db.VarChar(255)
+  maxAccounts    Int      @default(5) @map("max_accounts")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  // Relations
+  users                User[]
+  subscriptions        Subscription[]
+  naverAccounts        NaverAccount[]
+  campaigns            Campaign[]
+  adGroups             AdGroup[]
+  keywords             Keyword[]
+  bidHistory           BidHistory[]
+  rankSnapshots        RankSnapshot[]
+  profitability        Profitability[]
+  reportTemplates      ReportTemplate[]
+  reports              Report[]
+  competitiveIntel     CompetitiveIntel[]
+  notifications        Notification[]
+  aiActionLogs         AiActionLog[]
+  auditLogs            AuditLog[]
+  clickFraudEvents     ClickFraudEvent[]
+  blockedIps           BlockedIp[]
+  clickFraudSummaries  ClickFraudDailySummary[]
+
+  @@map("organizations")
+}
+
+/// 사용자
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique @db.VarChar(255)
+  passwordHash   String    @map("password_hash")
+  name           String    @db.VarChar(100)
+  role           UserRole  @default(viewer)
+  organizationId String    @map("organization_id")
+  avatarUrl      String?   @map("avatar_url")
+  phone          String?   @db.VarChar(20)
+  isActive       Boolean   @default(true) @map("is_active")
+  lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  // Relations
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+  aiActionLogs  AiActionLog[]
+  auditLogs     AuditLog[]
+
+  @@index([organizationId], name: "idx_users_org")
+  @@index([email], name: "idx_users_email")
+  @@map("users")
+}
+
+/// 구독
+model Subscription {
+  id                 String             @id @default(uuid())
+  organizationId     String             @map("organization_id")
+  planType           PlanType           @map("plan_type")
+  status             SubscriptionStatus @default(trialing)
+  monthlyPrice       Int                @map("monthly_price")
+  currentPeriodStart DateTime           @map("current_period_start") @db.Timestamptz
+  currentPeriodEnd   DateTime           @map("current_period_end") @db.Timestamptz
+  paymentProvider    String?            @map("payment_provider") @db.VarChar(50)
+  paymentProviderId  String?            @map("payment_provider_id") @db.VarChar(255)
+  canceledAt         DateTime?          @map("canceled_at") @db.Timestamptz
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId], name: "idx_subs_org")
+  @@index([status], name: "idx_subs_status")
+  @@map("subscriptions")
+}
+
+// ============================================================
+// 네이버 광고 엔티티
+// ============================================================
+
+/// 네이버 광고 계정
+model NaverAccount {
+  id                 String           @id @default(uuid())
+  organizationId     String           @map("organization_id")
+  customerId         String           @map("customer_id") @db.VarChar(100)
+  customerName       String           @map("customer_name") @db.VarChar(200)
+  apiKeyEncrypted    String           @map("api_key_encrypted")
+  secretKeyEncrypted String           @map("secret_key_encrypted")
+  connectionStatus   ConnectionStatus @default(pending) @map("connection_status")
+  lastSyncAt         DateTime?        @map("last_sync_at") @db.Timestamptz
+  dailyBudget        Int?             @map("daily_budget")
+  monthlySpend       Decimal          @default(0) @map("monthly_spend") @db.Decimal(15, 2)
+  commissionRate     Decimal?         @map("commission_rate") @db.Decimal(5, 4)
+  isActive           Boolean          @default(true) @map("is_active")
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime?        @map("deleted_at") @db.Timestamptz
+
+  organization        Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  campaigns           Campaign[]
+  profitability       Profitability[]
+  competitiveIntel    CompetitiveIntel[]
+  clickFraudEvents    ClickFraudEvent[]
+  blockedIps          BlockedIp[]
+  clickFraudSummaries ClickFraudDailySummary[]
+
+  @@unique([customerId, organizationId], name: "idx_naver_acc_customer")
+  @@index([organizationId], name: "idx_naver_acc_org")
+  @@map("naver_accounts")
+}
+
+/// 캠페인
+model Campaign {
+  id              String         @id @default(uuid())
+  naverAccountId  String         @map("naver_account_id")
+  organizationId  String         @map("organization_id")
+  naverCampaignId String         @map("naver_campaign_id") @db.VarChar(100)
+  name            String         @db.VarChar(255)
+  status          CampaignStatus @default(active)
+  campaignType    CampaignType?  @map("campaign_type")
+  dailyBudget     Int?           @map("daily_budget")
+  totalCost       Decimal        @default(0) @map("total_cost") @db.Decimal(15, 2)
+  impressions     Int            @default(0)
+  clicks          Int            @default(0)
+  conversions     Int            @default(0)
+  lastSyncAt      DateTime?      @map("last_sync_at") @db.Timestamptz
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?      @map("deleted_at") @db.Timestamptz
+
+  naverAccount     NaverAccount      @relation(fields: [naverAccountId], references: [id], onDelete: Cascade)
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  adGroups         AdGroup[]
+  clickFraudEvents ClickFraudEvent[]
+
+  // ⚠️ 반정규화 주의: organizationId는 NaverAccount에서 파생 가능
+  // 쿼리 최적화를 위한 의도적 반정규화
+
+  @@index([naverAccountId], name: "idx_camps_account")
+  @@index([status], name: "idx_camps_status")
+  @@index([organizationId, status], name: "idx_camps_org_status")
+  @@index([organizationId, deletedAt, status], name: "idx_camps_org_deleted_status")
+  @@map("campaigns")
+}
+
+/// 광고그룹
+model AdGroup {
+  id              String    @id @default(uuid())
+  campaignId      String    @map("campaign_id")
+  organizationId  String    @map("organization_id")
+  naverAdGroupId  String    @map("naver_ad_group_id") @db.VarChar(100)
+  name            String    @db.VarChar(255)
+  isActive        Boolean   @default(true) @map("is_active")
+  dailyBudget     Int?      @map("daily_budget")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+
+  campaign     Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  keywords     Keyword[]
+  ads          Ad[]
+
+  @@index([campaignId], name: "idx_adgroups_campaign")
+  @@index([organizationId], name: "idx_adgroups_org")
+  @@map("ad_groups")
+}
+
+/// 키워드
+model Keyword {
+  id              String      @id @default(uuid())
+  adGroupId       String      @map("ad_group_id")
+  organizationId  String      @map("organization_id")
+  naverKeywordId  String      @map("naver_keyword_id") @db.VarChar(100)
+  keywordText     String      @map("keyword_text") @db.VarChar(500)
+  currentBid      Int         @default(0) @map("current_bid")
+  targetRank      Int?        @map("target_rank")
+  bidStrategy     BidStrategy @default(manual) @map("bid_strategy")
+  matchType       MatchType   @default(exact) @map("match_type")
+  qualityIndex    Int?        @map("quality_index")
+  impressions     Int         @default(0)
+  clicks          Int         @default(0)
+  cpc             Int         @default(0)
+  ctr             Decimal     @default(0) @db.Decimal(5, 4)
+  conversions     Int         @default(0)
+  conversionValue Decimal     @default(0) @map("conversion_value") @db.Decimal(15, 2)
+  cost            Decimal     @default(0) @db.Decimal(15, 2)
+  roas            Decimal?    @db.Decimal(7, 2)  // (conversionValue / cost * 100)
+  isAutoManaged   Boolean     @default(false) @map("is_auto_managed")
+  version         Int         @default(1) // Optimistic Locking
+  lastSyncAt      DateTime?   @map("last_sync_at") @db.Timestamptz
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime?   @map("deleted_at") @db.Timestamptz
+
+  adGroup          AdGroup          @relation(fields: [adGroupId], references: [id], onDelete: Cascade)
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bidHistory       BidHistory[]
+  rankSnapshots    RankSnapshot[]
+  clickFraudEvents ClickFraudEvent[]
+
+  @@index([adGroupId, deletedAt], name: "idx_kw_adgroup_deleted")
+  @@index([organizationId, bidStrategy], name: "idx_kw_org_strategy")
+  @@index([keywordText], name: "idx_kw_text")
+  @@index([organizationId, deletedAt], name: "idx_kw_org_deleted")
+  @@index([organizationId, deletedAt, isAutoManaged], name: "idx_kw_org_deleted_auto")
+  @@map("keywords")
+}
+
+/// 광고 소재
+model Ad {
+  id             String    @id @default(uuid())
+  adGroupId      String    @map("ad_group_id")
+  organizationId String    @map("organization_id")
+  naverAdId      String    @map("naver_ad_id") @db.VarChar(100)
+  title          String?   @db.VarChar(255)
+  description    String?
+  displayUrl     String?   @map("display_url") @db.VarChar(500)
+  landingUrl     String?   @map("landing_url")
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  // ── 성과 메트릭 ──
+  impressions     Int      @default(0)
+  clicks          Int      @default(0)
+  ctr             Decimal  @default(0) @db.Decimal(5, 4)
+  conversions     Int      @default(0)
+  conversionValue Decimal  @default(0) @map("conversion_value") @db.Decimal(15, 2)
+  cost            Decimal  @default(0) @db.Decimal(15, 2)
+
+  // ── A/B 테스트 ──
+  testGroupId  String?  @map("test_group_id") @db.VarChar(100)
+  isControl    Boolean  @default(false) @map("is_control")
+  testStatus   String?  @map("test_status") @db.VarChar(20) // "running" | "winner" | "loser"
+
+  adGroup AdGroup @relation(fields: [adGroupId], references: [id], onDelete: Cascade)
+
+  @@index([adGroupId, deletedAt], name: "idx_ads_adgroup_deleted")
+  @@index([organizationId], name: "idx_ads_org")
+  @@index([testGroupId], name: "idx_ads_test_group")
+  @@map("ads")
+}
+
+// ============================================================
+// Agency OS 비즈니스 엔티티
+// ============================================================
+
+/// 입찰 이력 — UUIDv7 PK (시간순 정렬, 인덱스 팽창 방지)
+model BidHistory {
+  id             String    @id @default(dbgenerated("gen_random_uuid()"))
+  keywordId      String    @map("keyword_id")
+  organizationId String    @map("organization_id")
+  oldBid         Int       @map("old_bid")
+  newBid         Int       @map("new_bid")
+  reason         String    @db.VarChar(500)
+  changedBy      ChangedBy @default(ai) @map("changed_by")
+  currentRank    Int?      @map("current_rank")
+  targetRank     Int?      @map("target_rank")
+  changedAt      DateTime  @default(now()) @map("changed_at") @db.Timestamptz
+
+  keyword      Keyword      @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([keywordId, changedAt(sort: Desc)], name: "idx_bidh_keyword_date_desc")
+  @@index([organizationId, changedAt, changedBy], name: "idx_bidh_org_date_by")
+  @@map("bid_history")
+}
+
+/// 순위 스냅샷 — UUIDv7 PK
+model RankSnapshot {
+  id             String     @id @default(dbgenerated("gen_random_uuid()"))
+  keywordId      String     @map("keyword_id")
+  organizationId String     @map("organization_id")
+  rank           Int?
+  page           Int?
+  device         DeviceType @default(pc)
+  capturedAt     DateTime   @default(now()) @map("captured_at") @db.Timestamptz
+
+  keyword      Keyword      @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([keywordId, device, capturedAt(sort: Desc)], name: "idx_rank_kw_device_date_desc")
+  @@index([organizationId], name: "idx_rank_org")
+  @@map("rank_snapshots")
+}
+
+/// 수익성
+model Profitability {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  accountId      String   @map("account_id")
+  adSpend        Decimal  @map("ad_spend") @db.Decimal(15, 2)
+  agencyFee      Decimal  @map("agency_fee") @db.Decimal(15, 2)
+  backMargin     Decimal  @default(0) @map("back_margin") @db.Decimal(15, 2)
+  laborCost      Decimal  @default(0) @map("labor_cost") @db.Decimal(15, 2)
+  netProfit      Decimal  @map("net_profit") @db.Decimal(15, 2)
+  marginRate     Decimal  @map("margin_rate") @db.Decimal(5, 4)
+  period         DateTime @db.Date
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  naverAccount NaverAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, period], name: "idx_profit_org_period")
+  @@index([accountId], name: "idx_profit_account")
+  @@unique([organizationId, accountId, period], name: "uq_profit_org_account_period")
+  @@map("profitability")
+}
+
+/// 리포트 템플릿
+model ReportTemplate {
+  id              String        @id @default(uuid())
+  organizationId  String        @map("organization_id")
+  name            String        @db.VarChar(200)
+  description     String?
+  logoUrl         String?       @map("logo_url")
+  kpiConfig       Json          @default("{}") @map("kpi_config")
+  layoutConfig    Json          @default("{}") @map("layout_config")
+  scheduleType    ScheduleType? @default(weekly) @map("schedule_type")
+  recipientEmails Json          @default("[]") @map("recipient_emails")
+  naverAccountIds Json          @default("[]") @map("naver_account_ids")
+  isDefault       Boolean       @default(false) @map("is_default")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reports      Report[]
+
+  @@index([organizationId], name: "idx_rpt_tmpl_org")
+  @@map("report_templates")
+}
+
+/// 리포트
+model Report {
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  templateId     String?   @map("template_id")
+  title          String    @db.VarChar(255)
+  periodStart    DateTime  @map("period_start") @db.Date
+  periodEnd      DateTime  @map("period_end") @db.Date
+  fileUrl        String?   @map("file_url")
+  sentAt         DateTime? @map("sent_at") @db.Timestamptz
+  sentTo         Json      @default("[]") @map("sent_to")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  template     ReportTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId], name: "idx_reports_org")
+  @@index([periodStart, periodEnd], name: "idx_reports_period")
+  @@map("reports")
+}
+
+/// 경쟁 인텔리전스
+model CompetitiveIntel {
+  id               String    @id @default(uuid())
+  organizationId   String    @map("organization_id")
+  naverAccountId   String?   @map("naver_account_id")
+  keywordText      String    @map("keyword_text") @db.VarChar(500)
+  top5Ads          Json      @default("[]") @map("top5_ads")
+  estimatedBidLow  Int?      @map("estimated_bid_low")
+  estimatedBidHigh Int?      @map("estimated_bid_high")
+  competitorCount  Int       @default(0) @map("competitor_count")
+  crawledAt        DateTime  @default(now()) @map("crawled_at") @db.Timestamptz
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  naverAccount NaverAccount? @relation(fields: [naverAccountId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, keywordText], name: "idx_ci_org_kw")
+  @@index([crawledAt], name: "idx_ci_crawled")
+  @@map("competitive_intel")
+}
+
+/// 알림
+model Notification {
+  id             String               @id @default(uuid())
+  userId         String               @map("user_id")
+  organizationId String               @map("organization_id")
+  type           NotificationType
+  priority       NotificationPriority @default(normal)
+  title          String               @db.VarChar(255)
+  message        String
+  metadata       Json                 @default("{}")
+  isRead         Boolean              @default(false) @map("is_read")
+  readAt         DateTime?            @map("read_at") @db.Timestamptz
+  channels       Json                 @default("[\"in_app\"]")
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt], name: "idx_notif_user_read_created")
+  @@index([organizationId], name: "idx_notif_org")
+  @@index([createdAt], name: "idx_notif_created")
+  @@index([isRead, readAt], name: "idx_notif_read_readat")
+  @@map("notifications")
+}
+
+/// AI 액션 로그
+model AiActionLog {
+  id             String       @id @default(uuid())
+  userId         String?      @map("user_id")
+  organizationId String       @map("organization_id")
+  actionType     AiActionType @map("action_type")
+  entityType     String       @map("entity_type") @db.VarChar(50)
+  entityId       String?      @map("entity_id")
+  inputData      Json         @default("{}") @map("input_data")
+  outputData     Json         @default("{}") @map("output_data")
+  confidence     Decimal?     @db.Decimal(3, 2)
+  isApproved     Boolean?     @map("is_approved")
+  approvedAt     DateTime?    @map("approved_at") @db.Timestamptz
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId], name: "idx_ai_log_org")
+  @@index([actionType], name: "idx_ai_log_type")
+  @@index([entityType, entityId], name: "idx_ai_log_entity")
+  @@map("ai_action_logs")
+}
+
+/// 감사 로그 — UUIDv7 PK
+model AuditLog {
+  id             String      @id @default(dbgenerated("gen_random_uuid()"))
+  userId         String?     @map("user_id")
+  organizationId String      @map("organization_id")
+  action         AuditAction
+  entityType     String      @map("entity_type") @db.VarChar(100)
+  entityId       String?     @map("entity_id")
+  oldValues      Json?       @map("old_values")
+  newValues      Json?       @map("new_values")
+  ipAddress      String?     @map("ip_address") @db.VarChar(45)
+  userAgent      String?     @map("user_agent")
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt      DateTime?   @map("expires_at") @db.Timestamptz
+
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId], name: "idx_audit_entity")
+  @@index([createdAt], name: "idx_audit_created")
+  @@index([expiresAt], name: "idx_audit_expires")
+  @@index([organizationId, createdAt, action], name: "idx_audit_org_date_action")
+  @@map("audit_logs")
+}
+
+// ============================================================
+// 부정클릭 방지
+// ============================================================
+
+model ClickFraudEvent {
+  id                String      @id @default(dbgenerated("gen_random_uuid()"))
+  organizationId    String      @map("organization_id")
+  naverAccountId    String      @map("naver_account_id")
+  keywordId         String?     @map("keyword_id")
+  campaignId        String?     @map("campaign_id")
+  clickTimestamp    DateTime    @map("click_timestamp") @db.Timestamptz
+  ipHash            String      @map("ip_hash") @db.VarChar(64)
+  userAgent         String?     @map("user_agent")
+  deviceFingerprint String?     @map("device_fingerprint") @db.VarChar(64)
+  geoCountry        String?     @map("geo_country") @db.VarChar(2)
+  geoRegion         String?     @map("geo_region") @db.VarChar(20)
+  sessionId         String?     @map("session_id") @db.VarChar(64)
+  landingUrl        String?     @map("landing_url")
+  dwellTimeMs       Int?        @map("dwell_time_ms")
+  fraudScore        Decimal     @default(0) @map("fraud_score") @db.Decimal(3, 2)
+  triggeredRules    Json        @default("[]") @map("triggered_rules")
+  status            FraudStatus @default(pending)
+  actionTaken       String?     @map("action_taken") @db.VarChar(20)
+  createdAt         DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  naverAccount NaverAccount @relation(fields: [naverAccountId], references: [id], onDelete: Cascade)
+  keyword      Keyword?     @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+  campaign     Campaign?    @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId], name: "idx_cfe_org")
+  @@index([naverAccountId], name: "idx_cfe_account")
+  @@index([ipHash, clickTimestamp], name: "idx_cfe_ip_time")
+  @@index([deviceFingerprint], name: "idx_cfe_fingerprint")
+  @@index([status], name: "idx_cfe_status")
+  @@index([organizationId, status, clickTimestamp], name: "idx_cfe_org_status_time")
+  @@map("click_fraud_events")
+}
+
+model BlockedIp {
+  id             String      @id @default(uuid())
+  organizationId String      @map("organization_id")
+  naverAccountId String      @map("naver_account_id")
+  ipHash         String      @map("ip_hash") @db.VarChar(64)
+  ipMasked       String?     @map("ip_masked") @db.VarChar(15)
+  blockReason    BlockReason @map("block_reason")
+  triggeredRules Json        @default("[]") @map("triggered_rules")
+  fraudCount     Int         @default(0) @map("fraud_count")
+  estimatedLoss  Decimal     @default(0) @map("estimated_loss") @db.Decimal(12, 2)
+  isActive       Boolean     @default(true) @map("is_active")
+  blockedAt      DateTime    @default(now()) @map("blocked_at") @db.Timestamptz
+  expiresAt      DateTime?   @map("expires_at") @db.Timestamptz
+  unblockedAt    DateTime?   @map("unblocked_at") @db.Timestamptz
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  naverAccount NaverAccount @relation(fields: [naverAccountId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId], name: "idx_blocked_org")
+  @@index([naverAccountId], name: "idx_blocked_account")
+  @@index([ipHash], name: "idx_blocked_ip")
+  @@index([organizationId, isActive], name: "idx_blocked_org_active")
+  @@unique([organizationId, ipHash], name: "uq_blocked_org_ip")
+  @@map("blocked_ips")
+}
+
+model ClickFraudDailySummary {
+  id              String   @id @default(uuid())
+  organizationId  String   @map("organization_id")
+  naverAccountId  String   @map("naver_account_id")
+  summaryDate     DateTime @map("summary_date") @db.Date
+  totalClicks     Int      @default(0) @map("total_clicks")
+  fraudClicks     Int      @default(0) @map("fraud_clicks")
+  fraudRate       Decimal  @default(0) @map("fraud_rate") @db.Decimal(5, 2)
+  estimatedLoss   Decimal  @default(0) @map("estimated_loss") @db.Decimal(12, 2)
+  blockedIpsCount Int      @default(0) @map("blocked_ips_count")
+  refundRequested Decimal  @default(0) @map("refund_requested") @db.Decimal(12, 2)
+  refundApproved  Decimal  @default(0) @map("refund_approved") @db.Decimal(12, 2)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  naverAccount NaverAccount @relation(fields: [naverAccountId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, summaryDate], name: "idx_cfds_org_date")
+  @@index([naverAccountId], name: "idx_cfds_account")
+  @@unique([organizationId, naverAccountId, summaryDate], name: "uq_cfds_org_account_date")
+  @@map("click_fraud_daily_summary")
+}
