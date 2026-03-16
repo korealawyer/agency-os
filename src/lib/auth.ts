@@ -2,8 +2,10 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/db';
+import { authConfig } from '@/lib/auth.config';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     Credentials({
       name: 'credentials',
@@ -17,7 +19,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = credentials.email as string;
         const password = credentials.password as string;
 
-        // User 테이블은 멀티테넌트 모델이 아니므로 findUnique 사용 가능
         const user = await prisma.user.findUnique({
           where: { email },
           select: {
@@ -36,8 +37,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const isValid = await bcrypt.compare(password, user.passwordHash);
         if (!isValid) return null;
 
-
-
         return {
           id: user.id,
           email: user.email,
@@ -49,37 +48,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
 
-  session: {
-    strategy: 'jwt',
-    maxAge: 8 * 60 * 60, // 8시간
-    updateAge: 60 * 60,   // 1시간마다 갱신
-  },
-
-  pages: {
-    signIn: '/login',
-  },
-
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    ...authConfig.callbacks,
+    async jwt({ token, user }) {
       // 최초 로그인 시 user 객체가 전달됨
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
         token.organizationId = (user as any).organizationId;
-      }
-
-      // 세션 갱신 시(updateAge마다) DB에서 role 재확인
-      if (trigger === 'update' || !user) {
-        try {
-          const dbUser = await prisma.user.findFirst({
-            where: { id: token.id as string },
-            select: { role: true, isActive: true },
-          });
-          if (!dbUser || !dbUser.isActive) return null as any; // 비활성 사용자 강제 로그아웃
-          token.role = dbUser.role;
-        } catch {
-          // DB 조회 실패 시 기존 토큰 유지
-        }
       }
 
       return token;
