@@ -39,7 +39,11 @@ export async function middleware(req: NextRequest) {
 
   // API 라우트 인증 체크
   if (pathname.startsWith('/api/')) {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const token = await getToken({ 
+      req, 
+      secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+      salt: 'authjs.session-token',
+    });
     if (!token) {
       return NextResponse.json(
         { error: { message: '인증이 필요합니다.' } },
@@ -50,7 +54,11 @@ export async function middleware(req: NextRequest) {
 
   // 대시보드 경로 인증 체크
   if (pathname.startsWith('/dashboard')) {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const token = await getToken({ 
+      req, 
+      secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+      salt: 'authjs.session-token',
+    });
     if (!token) {
       const loginUrl = new URL('/login', req.url);
       loginUrl.searchParams.set('callbackUrl', req.url);
