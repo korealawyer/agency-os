@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Send, Sparkles, User, Bot, Lightbulb, TrendingUp, Search, DollarSign, Shield, BarChart3, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface Message {
   id: number;
@@ -294,9 +296,18 @@ export default function CopilotPage() {
                 borderRadius: msg.role === "user" ? "var(--radius-xl) var(--radius-xl) 4px var(--radius-xl)" : "var(--radius-xl) var(--radius-xl) var(--radius-xl) 4px",
                 background: msg.role === "user" ? "var(--primary)" : "var(--surface-hover)",
                 color: msg.role === "user" ? "white" : "var(--text-primary)",
-                fontSize: "0.929rem", lineHeight: 1.7, whiteSpace: "pre-wrap",
+                fontSize: "0.929rem", lineHeight: 1.7,
+                ...(msg.role === "user" ? { whiteSpace: "pre-wrap" as const } : {}),
               }}>
-                {msg.content}
+                {msg.role === "user" ? (
+                  msg.content
+                ) : (
+                  <div className="markdown-content">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
+                )}
               </div>
             </div>
           ))}

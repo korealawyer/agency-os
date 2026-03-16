@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.4.0] - 2026-03-16
+
+### 🔄 네이버 광고 데이터 동기화 파이프라인 (Naver Ads Sync Pipeline)
+- **동기화 서비스** (`lib/naver-sync.ts`): 네이버 광고 계정 전체를 DB로 동기화하는 핵심 서비스
+  - `syncAccount(accountId, orgId)` — 캠페인 → 광고그룹 → 키워드 순서로 upsert 동기화
+  - 키워드 전일 통계 (클릭/노출/CTR/전환/비용/ROAS) 배치 조회 후 DB 반영
+  - CTR 급락(50% 이상 하락, 노출 100건+) 자동 이상 탐지 → Notification 생성
+  - 동기화 완료 후 `NaverAccount.connectionStatus` / `lastSyncAt` 자동 갱신
+  - `syncAllAccounts(orgId)` — 조직 내 전체 활성 계정 병렬 동기화 (`Promise.allSettled`)
+- **크론 엔드포인트** (`api/cron/sync-naver/route.ts`): 전체 조직 일괄 동기화 HTTP 엔드포인트
+  - `CRON_SECRET` 환경변수 기반 Bearer 토큰 인증
+  - 응답: 경과시간, 처리된 조직/캠페인/키워드/에러 수 요약
+- **Copilot AI 채팅** (`api/copilot/chat/route.ts`): AI 대화형 광고 최적화 어드바이저 API 개선
+- **미들웨어 제거** (`middleware.ts` 삭제): Vercel Hobby 플랜 호환성을 위해 Edge 미들웨어 제거
+- **환경변수 업데이트** (`.env.example`): `CRON_SECRET` 등 신규 환경변수 추가
+
+### 수정된 파일 목록
+| 파일 | 변경 내용 |
+|------|----------|
+| `lib/naver-sync.ts` | [NEW] 네이버 광고 계정 → DB 완전 동기화 서비스 |
+| `api/cron/sync-naver/route.ts` | [NEW] 전 조직 일괄 동기화 크론 엔드포인트 |
+| `api/copilot/chat/route.ts` | AI 채팅 어드바이저 API 로직 개선 |
+| `(auth)/login/page.tsx` | 로그인 페이지 UI 개선 |
+| `middleware.ts` | [DELETE] Vercel Hobby 플랜 호환성을 위해 제거 |
+| `.env.example` | `CRON_SECRET` 등 신규 환경변수 문서화 |
+
+---
+
 ## [1.3.0] - 2026-03-15
 
 ### 📊 시간대별 성과 히트맵

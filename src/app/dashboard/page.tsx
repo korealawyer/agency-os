@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell, Search, TrendingUp, TrendingDown, DollarSign,
   MousePointerClick, Eye, Target, Sparkles, ChevronRight,
-  CheckCircle2, AlertTriangle, Calendar, RefreshCw
+  CheckCircle2, AlertTriangle, Calendar, RefreshCw, X, Wifi, FileText
 } from "lucide-react";
 import {
   XAxis, YAxis, CartesianGrid, Tooltip,
@@ -98,8 +98,30 @@ export default function DashboardPage() {
   const [dateRange, setDateRange] = useState<DateRange>(initRange);
   const [actionStates, setActionStates] = useState<Record<number, "approved" | "rejected" | "approved_dismissed" | "rejected_dismissed" | null>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [showBellPanel, setShowBellPanel] = useState(false);
+  const bellRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { addToast } = useToast();
+
+  // 알림 빠른 미리보기 데이터
+  const quickNotifs = [
+    { id: 2, icon: AlertTriangle, color: "var(--error)", title: "B 성형외과 CTR 급락", time: "12분 전", href: "/dashboard/campaigns?account=B%20%EC%84%B1%ED%98%95%EC%99%B8%EA%B3%BC" },
+    { id: 4, icon: AlertTriangle, color: "var(--warning)", title: "C 치과의원 일예산 90% 소진", time: "2시간 전", href: "/dashboard/accounts" },
+    { id: 5, icon: Wifi, color: "var(--error)", title: "D 부동산 API 연결 오류", time: "3시간 전", href: "/dashboard/accounts" },
+    { id: 3, icon: FileText, color: "var(--success)", title: "주간 리포트 발송 완료", time: "1시간 전", href: "/dashboard/reports" },
+    { id: 1, icon: TrendingUp, color: "var(--warning)", title: "A 법률사무소 입찰가 조정", time: "5분 전", href: "/dashboard/keywords" },
+  ];
+
+  // Bell panel 외부 클릭 시 닫기
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
+        setShowBellPanel(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   // 날짜 범위 → 기간 문자열 변환
   const periodKey = useMemo(() => {
@@ -184,10 +206,60 @@ export default function DashboardPage() {
             <Search size={18} color="var(--text-muted)" style={{ position: "absolute", left: 12, top: 10 }} />
             <input className="form-input" placeholder="계정/키워드 검색..." style={{ paddingLeft: 36, width: 200 }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
-          <button className="btn btn-ghost" style={{ position: "relative" }} onClick={() => router.push("/dashboard/notifications")}>
-            <Bell size={20} />
-            <span style={{ position: "absolute", top: 2, right: 2, width: 8, height: 8, background: "var(--error)", borderRadius: "50%" }} />
-          </button>
+          <div ref={bellRef} style={{ position: "relative" }}>
+            <button className="btn btn-ghost" style={{ position: "relative" }} onClick={() => setShowBellPanel((v) => !v)}>
+              <Bell size={20} />
+              <span style={{ position: "absolute", top: 2, right: 2, width: 8, height: 8, background: "var(--error)", borderRadius: "50%" }} />
+            </button>
+            {showBellPanel && (
+              <div style={{
+                position: "absolute", right: 0, top: "calc(100% + 8px)", zIndex: 200,
+                background: "var(--bg-card, var(--surface))", border: "1px solid var(--border)",
+                borderRadius: "var(--radius-xl)", boxShadow: "var(--shadow-xl)",
+                minWidth: 320, maxWidth: 380, overflow: "hidden",
+              }}>
+                <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <strong style={{ fontSize: "0.929rem" }}>🔔 알림</strong>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <span className="badge badge-error" style={{ fontSize: "0.714rem" }}>3 미읽음</span>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setShowBellPanel(false)}><X size={14} /></button>
+                  </div>
+                </div>
+                <div style={{ maxHeight: 340, overflowY: "auto" }}>
+                  {quickNotifs.map((n) => {
+                    const Icon = n.icon;
+                    return (
+                      <div
+                        key={n.id}
+                        onClick={() => { setShowBellPanel(false); router.push(n.href); }}
+                        style={{
+                          display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 16px",
+                          borderBottom: "1px solid var(--border)", cursor: "pointer",
+                          transition: "background var(--transition)",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface-hover)"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                      >
+                        <div style={{ width: 28, height: 28, borderRadius: "var(--radius-md)", background: `${n.color}20`, color: n.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                          <Icon size={14} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: "0.857rem", fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{n.title}</div>
+                          <div style={{ fontSize: "0.786rem", color: "var(--text-muted)", marginTop: 1 }}>{n.time}</div>
+                        </div>
+                        <ChevronRight size={14} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 4 }} />
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ padding: "10px 16px", borderTop: "1px solid var(--border)", textAlign: "center" }}>
+                  <button className="btn btn-ghost btn-sm" style={{ width: "100%", fontSize: "0.857rem" }} onClick={() => { setShowBellPanel(false); router.push("/dashboard/notifications"); }}>
+                    전체 알림 보기 →
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

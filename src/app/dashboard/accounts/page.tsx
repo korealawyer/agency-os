@@ -84,10 +84,29 @@ export default function AccountsPage() {
     if (selectedDrawer === id) setSelectedDrawer(null);
   };
 
-  const handleSyncAccount = (id: number) => {
+  const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set());
+
+  const handleSyncAccount = async (id: number) => {
     const acc = accounts.find((a) => a.id === id);
-    addToast("success", "동기화 완료", `'${acc?.name}' 계정 데이터가 동기화되었습니다.`);
+    if (!acc) return;
     setCtxMenu(null);
+    setSyncingIds((prev) => new Set(prev).add(id));
+    try {
+      const res = await fetch(`/api/accounts/${id}/sync`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // 마지막 동기화 시간 업데이트
+        setAccounts((prev) => prev.map((a) => a.id === id ? { ...a, lastSync: "방금 전", status: "connected" } : a));
+        addToast("success", "동기화 완료", `'${acc.name}' — 캠페인 ${data.synced?.campaigns ?? 0}개, 키워드 ${data.synced?.keywords ?? 0}개 동기화됨`);
+      } else {
+        setAccounts((prev) => prev.map((a) => a.id === id ? { ...a, status: "error" } : a));
+        addToast("error", "동기화 실패", data.error ?? "알 수 없는 오류가 발생했습니다.");
+      }
+    } catch {
+      addToast("error", "동기화 실패", "네트워크 오류가 발생했습니다.");
+    } finally {
+      setSyncingIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+    }
   };
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -242,7 +261,7 @@ export default function AccountsPage() {
       {/* 3-B: Account Add Modal */}
       {showAddModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#fff", borderRadius: "var(--radius-xl)", padding: 32, maxWidth: 520, width: "100%", boxShadow: "var(--shadow-xl)" }}>
+          <div style={{ background: "var(--bg-card, var(--surface))", borderRadius: "var(--radius-xl)", padding: 32, maxWidth: 520, width: "100%", boxShadow: "var(--shadow-xl)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3>📡 광고 계정 연동</h3>
               <button className="btn btn-ghost btn-sm" onClick={() => { setShowAddModal(false); setApiTestStatus("idle"); }}><X size={18} /></button>

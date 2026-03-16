@@ -90,7 +90,6 @@ function getContextBasedResponse(message: string, context?: any): string {
     if (msgLower.includes(keyword)) return response;
   }
 
-  // 기본 응답
   const keywordCount = context?.keywordCount ?? 0;
   const accountCount = context?.accountCount ?? 0;
   return `안녕하세요! 말씀하신 내용을 분석해보겠습니다.
@@ -131,12 +130,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     // DB 미연결 시 빈 컨텍스트
   }
 
-  let aiResponse: string;
-
-  // OpenAI 연동 시도 (환경변수가 있을 때만)
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      const systemPrompt = `당신은 네이버 검색광고 전문 AI 어시스턴트입니다.
+  // 공통 시스템 프롬프트 (실시간 계정 데이터 포함)
+  const systemPrompt = `당신은 네이버 검색광고 전문 AI 어시스턴트입니다.
 사용자의 광고 계정 데이터를 기반으로 분석하고 최적화를 제안합니다.
 한국어로 응답하며, 마크다운 테이블과 이모지를 활용하여 가독성 높은 응답을 생성합니다.
 
@@ -144,10 +139,41 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 - 총 키워드: ${context.keywordCount ?? 0}개
 - 총 계정: ${context.accountCount ?? 0}개
 ${context.recentKeywords?.length ? `
-[상위 키워드 (비용 기준)]
-${context.recentKeywords.map((k: any) => `- ${k.keywordText}: 입찰가 ₩${k.currentBid}, CTR ${Number(k.ctr) * 100}%, 전환 ${k.conversions}건`).join('\n')}
+[상위 키워드 (비용 기준 TOP 10)]
+${context.recentKeywords.map((k: any) => `- ${k.keywordText}: 입찰가 ₩${k.currentBid}, CTR ${(Number(k.ctr) * 100).toFixed(1)}%, 전환 ${k.conversions}건`).join('\n')}
 ` : ''}`;
 
+  let aiResponse: string;
+
+  // 1순위: Google Gemini API
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ role: 'user', parts: [{ text: message }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+          }),
+        }
+      );
+      if (geminiRes.ok) {
+        const result = await geminiRes.json();
+        aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text
+          || getContextBasedResponse(message, context);
+      } else {
+        aiResponse = getContextBasedResponse(message, context);
+      }
+    } catch {
+      aiResponse = getContextBasedResponse(message, context);
+    }
+  }
+  // 2순위: OpenAI API
+  else if (process.env.OPENAI_API_KEY) {
+    try {
       const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -164,10 +190,10 @@ ${context.recentKeywords.map((k: any) => `- ${k.keywordText}: 입찰가 ₩${k.c
           max_tokens: 2000,
         }),
       });
-
       if (openaiRes.ok) {
         const result = await openaiRes.json();
-        aiResponse = result.choices?.[0]?.message?.content || getContextBasedResponse(message, context);
+        aiResponse = result.choices?.[0]?.message?.content
+          || getContextBasedResponse(message, context);
       } else {
         aiResponse = getContextBasedResponse(message, context);
       }
@@ -175,7 +201,7 @@ ${context.recentKeywords.map((k: any) => `- ${k.keywordText}: 입찰가 ₩${k.c
       aiResponse = getContextBasedResponse(message, context);
     }
   } else {
-    // OpenAI 미설정 → Mock 폴백
+    // 3순위: Mock 폴백
     aiResponse = getContextBasedResponse(message, context);
   }
 

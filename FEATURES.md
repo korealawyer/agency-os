@@ -28,6 +28,9 @@
 | 부정클릭 | 악성 IP 식별 및 차단 | `BlockedIp` | `dashboard/click-fraud` | `api/click-fraud/blocked-ips` | ✅ 구현 완료 |
 | 부정클릭 | 일간 리포트 및 자동 환불요청 | `ClickFraudDailySummary` | `dashboard/click-fraud` | `api/click-fraud/summary` | ✅ 구현 완료 |
 | 인프라 | 네이버 API 재시도 (Exponential Backoff) | - | - | `lib/naver-ads-api.ts` | ✅ 구현 완료 |
+| 데이터 연동 | 네이버 광고 계정 DB 동기화 서비스 | `Campaign`, `AdGroup`, `Keyword` | - | `lib/naver-sync.ts` | ✅ 구현 완료 |
+| 데이터 연동 | 계정 동기화 크론 엔드포인트 | - | - | `api/cron/sync-naver` | ✅ 구현 완료 |
+| AI 및 자동화 | AI 채팅 어드바이저 (Copilot Chat) | `AiActionLog` | `dashboard/copilot` | `api/copilot/chat` | ✅ 구현 완료 |
 | UI/UX | 다크 모드 | - | `globals.css` | - | ✅ 구현 완료 |
 | UI/UX | DateRangePicker 컴포넌트 | - | `components/DateRangePicker` | - | ✅ 구현 완료 |
 | UI/UX | 공통 Modal 컴포넌트 | - | `components/Modal` | - | ✅ 구현 완료 |

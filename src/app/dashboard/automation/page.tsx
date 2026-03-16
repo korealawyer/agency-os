@@ -292,7 +292,7 @@ export default function AutomationPage() {
           alignItems: "center", justifyContent: "center", zIndex: 1000,
         }}>
           <div style={{
-            background: "#fff", borderRadius: "var(--radius-xl)", padding: 32,
+            background: "var(--bg-card, var(--surface))", borderRadius: "var(--radius-xl)", padding: 32,
             maxWidth: 480, width: "100%", boxShadow: "var(--shadow-xl)",
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>

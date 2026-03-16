@@ -333,7 +333,7 @@ function LoginPageInner() {
       </div>
     {termsModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#fff", borderRadius: 16, padding: 32, maxWidth: 560, width: "90%", maxHeight: "80vh", overflow: "auto", boxShadow: "0 25px 50px rgba(0,0,0,0.25)" }}>
+          <div style={{ background: "var(--bg-card, var(--surface))", borderRadius: 16, padding: 32, maxWidth: 560, width: "90%", maxHeight: "80vh", overflow: "auto", boxShadow: "0 25px 50px rgba(0,0,0,0.25)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3>{termsModal === "terms" ? "📋 이용약관" : "🔒 개인정보처리방침"}</h3>
               <button className="btn btn-ghost btn-sm" onClick={() => setTermsModal(null)}>✕</button>

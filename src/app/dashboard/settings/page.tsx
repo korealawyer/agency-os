@@ -311,7 +311,7 @@ export default function SettingsPage() {
       {/* B-9: Member Invite Modal */}
       {showInviteModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#fff", borderRadius: "var(--radius-xl)", padding: 32, maxWidth: 480, width: "100%", boxShadow: "var(--shadow-xl)" }}>
+          <div style={{ background: "var(--bg-card, var(--surface))", borderRadius: "var(--radius-xl)", padding: 32, maxWidth: 480, width: "100%", boxShadow: "var(--shadow-xl)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3>👤 멤버 초대</h3>
               <button className="btn btn-ghost btn-sm" onClick={() => setShowInviteModal(false)}><X size={18} /></button>
@@ -350,7 +350,7 @@ export default function SettingsPage() {
       {/* B-10a: Member Edit Modal */}
       {editMember && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#fff", borderRadius: "var(--radius-xl)", padding: 32, maxWidth: 420, width: "100%", boxShadow: "var(--shadow-xl)" }}>
+          <div style={{ background: "var(--bg-card, var(--surface))", borderRadius: "var(--radius-xl)", padding: 32, maxWidth: 420, width: "100%", boxShadow: "var(--shadow-xl)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h3>✏️ 역할 변경</h3>
               <button className="btn btn-ghost btn-sm" onClick={() => setEditMember(null)}><X size={18} /></button>
@@ -383,7 +383,7 @@ export default function SettingsPage() {
       {/* B-10b: Member Delete Confirmation Modal */}
       {deleteMember && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "#fff", borderRadius: "var(--radius-xl)", padding: 32, maxWidth: 420, width: "100%", boxShadow: "var(--shadow-xl)" }}>
+          <div style={{ background: "var(--bg-card, var(--surface))", borderRadius: "var(--radius-xl)", padding: 32, maxWidth: 420, width: "100%", boxShadow: "var(--shadow-xl)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ color: "var(--error)" }}>⚠️ 멤버 제거</h3>
               <button className="btn btn-ghost btn-sm" onClick={() => setDeleteMember(null)}><X size={18} /></button>
