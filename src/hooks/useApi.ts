@@ -57,7 +57,10 @@ export async function apiMutate<T = any>(
 
 export function useDashboard(period?: string) {
   const params = period ? `?period=${period}` : '';
-  return useApi(`/api/dashboard${params}`, { refreshInterval: 300_000 });
+  return useApi(`/api/dashboard${params}`, {
+    refreshInterval: 300_000,
+    keepPreviousData: true,  // 기간 변경 시 이전 데이터 유지 (깜박임 방지)
+  });
 }
 
 export function useHeatmap(period?: string) {
@@ -77,7 +80,9 @@ export function useCampaigns(page = 1, limit = 20, status?: string) {
 
 export function useKeywords(page = 1, limit = 50, filters?: Record<string, string>) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit), ...filters });
-  return useApi(`/api/keywords?${params}`);
+  return useApi(`/api/keywords?${params}`, {
+    keepPreviousData: true,
+  });
 }
 
 export function useAiActions(page = 1, limit = 10, isApproved?: string) {

@@ -12,9 +12,10 @@ import {
   ResponsiveContainer, AreaChart, Area,
 } from "recharts";
 import { useToast } from "@/components/Toast";
+import ErrorState from "@/components/ErrorState";
 import { useDashboard, useAccounts, useAiActions, useHeatmap, apiMutate } from "@/hooks/useApi";
 import { KpiSkeleton, TableSkeleton, ChartSkeleton } from "@/components/Skeleton";
-import ErrorState from "@/components/ErrorState";
+
 import DateRangePicker, { type DateRange } from "@/components/DateRangePicker";
 import Breadcrumb from "@/components/Breadcrumb";
 import HeatmapChart, { type HeatmapCell } from "@/components/HeatmapChart";
@@ -134,13 +135,16 @@ export default function DashboardPage() {
 
   // ── API 데이터 페칭 (폴백 지원) ──
   const { data: dashboardData, isLoading: dashLoading, error: dashError, mutate: mutateDash } = useDashboard(periodKey);
+  // API 에러 여부 (단, 이전 캐시 데이터가 있으면 표시 유지)
+  const hasApiError = !!dashError && !dashboardData;
   const { data: heatmapData, isLoading: heatmapLoading } = useHeatmap(periodKey);
   const [heatmapMetric, setHeatmapMetric] = useState<"clicks" | "impressions" | "cost" | "conversions">("clicks");
   const { data: accountsData, isLoading: accLoading } = useAccounts();
   const { data: aiActionsData, isLoading: aiLoading } = useAiActions();
 
-  // API 데이터 or 폴백
+  // API 데이터 or 폴백 (에러 시에도 폴백 사용 — 빈 화면 방지)
   const kpiData = dashboardData ? buildKpiFromApi(dashboardData) : fallbackKpi;
+  const isFallbackMode = !dashboardData; // 폴백 모드 여부
   const chartData = dashboardData?.chartData ?? fallbackChart;
   const accounts: typeof fallbackAccounts = accountsData?.length > 0
     ? accountsData.map((a: any) => ({
@@ -264,13 +268,35 @@ export default function DashboardPage() {
       </header>
 
       <div className="main-body">
+        {/* API 에러 배너 — 캐시 데이터도 없을 때만 표시 */}
+        {dashError && (
+          <div style={{
+            marginBottom: 16, padding: '10px 16px',
+            background: 'var(--warning-light, #FEF9C3)', border: '1px solid var(--warning, #F59E0B)',
+            borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', gap: 10,
+            fontSize: '0.857rem', color: 'var(--warning-dark, #92400E)',
+          }}>
+            <AlertTriangle size={16} color="var(--warning, #F59E0B)" />
+            <span style={{ flex: 1 }}>
+              {hasApiError
+                ? '실시간 데이터를 불러올 수 없습니다. 샘플 데이터를 표시 중입니다.'
+                : '⚠️ API 불안정 — 이전 데이터를 표시 중입니다.'}
+            </span>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => mutateDash()}
+              style={{ flexShrink: 0, color: 'var(--warning-dark, #92400E)' }}
+            >
+              <RefreshCw size={13} style={{ marginRight: 4 }} /> 재시도
+            </button>
+          </div>
+        )}
+
         {/* KPI Cards */}
-        {dashLoading ? (
+        {dashLoading && !isFallbackMode ? (
           <KpiSkeleton count={6} />
-        ) : dashError ? (
-          <ErrorState message="KPI 데이터를 불러올 수 없습니다." onRetry={() => mutateDash()} />
         ) : (
-          <div className="kpi-grid">
+          <div className="kpi-grid" style={{ opacity: isFallbackMode ? 0.65 : 1, transition: 'opacity 0.3s' }}>
             {kpiData.map((kpi, idx) => {
               const Icon = kpi.icon;
               const drillDownRoutes = [
@@ -294,11 +320,15 @@ export default function DashboardPage() {
                       {kpi.change}
                     </span>
                   )}
+                  {isFallbackMode && (
+                    <span style={{ fontSize: '0.643rem', color: 'var(--text-muted)', marginTop: 2 }}>샘플</span>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
+
 
         {/* AI Recommend Panel */}
         <div className="card ai-panel" style={{ marginBottom: "var(--space-6)" }}>

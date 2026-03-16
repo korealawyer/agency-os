@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.1] - 2026-03-17
+
+### 🔐 NextAuth Vercel 배포 인증 오류 픽스
+- **Session API 연동** (`lib/api-helpers.ts`): Vercel 프로덕션 환경에서 생성되는 보안 쿠키(`__Secure-authjs.session-token`)를 API 라우트가 정상적으로 인식하지 못하는 401 에러 해결. `getToken()` 대신 NextAuth v5의 `auth()` 기반 세션 검증 로직으로 변경.
+
+### 수정된 파일 목록
+| 파일 | 변경 내용 |
+|------|----------|
+| `lib/api-helpers.ts` | [MODIFY] API 인증 유틸리티 `requireAuth` 로직 변경 |
+
+---
+
 ## [1.4.0] - 2026-03-16
 
 ### 🔄 네이버 광고 데이터 동기화 파이프라인 (Naver Ads Sync Pipeline)

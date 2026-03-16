@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 import prisma from '@/lib/db';
 import { ZodError } from 'zod';
-import { Prisma } from '@prisma/client';
+import { auth } from '@/lib/auth';
+
+
 
 // ──── 응답 유틸리티 ────
 
@@ -47,18 +48,18 @@ export interface AuthUser {
 }
 
 export async function requireAuth(req: NextRequest): Promise<AuthUser> {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const session = await auth();
 
-  if (!token || !token.id || !token.organizationId) {
+  if (!session || !session.user || !session.user.id || !(session.user as any).organizationId) {
     throw new UnauthorizedError('인증이 필요합니다. 로그인해 주세요.');
   }
 
   return {
-    id: token.id as string,
-    email: token.email as string,
-    name: token.name as string,
-    role: token.role as AuthUser['role'],
-    organizationId: token.organizationId as string,
+    id: session.user.id as string,
+    email: session.user.email as string,
+    name: session.user.name as string,
+    role: (session.user as any).role as AuthUser['role'],
+    organizationId: (session.user as any).organizationId as string,
   };
 }
 
@@ -163,7 +164,7 @@ export function withErrorHandler(handler: ApiHandler): ApiHandler {
       }
 
       // Prisma 에러
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error?.code && typeof error.code === 'string' && error.code.startsWith('P')) {
         switch (error.code) {
           case 'P2002': // Unique constraint violation
             return apiError('중복된 데이터가 존재합니다.', 409);

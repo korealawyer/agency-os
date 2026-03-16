@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
-import { Search, Download, Upload, Sparkles, TrendingUp, TrendingDown, ArrowUpDown, Shield, Filter, CheckCircle2, Clock, X, Plus, AlertTriangle, Settings2, ChevronUp, ChevronDown } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Search, Download, Upload, Sparkles, TrendingUp, TrendingDown, Shield, Filter, CheckCircle2, Clock, X, Plus, AlertTriangle, Settings2 } from "lucide-react";
 import { downloadCsv } from "@/utils/export";
 import { parseCSV, readFileAsText } from "@/utils/csv";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useToast } from "@/components/Toast";
 import { useKeywords, useClickFraudEvents, useBlockedIps, useAccounts, apiMutate } from "@/hooks/useApi";
-import { KpiSkeleton, TableSkeleton } from "@/components/Skeleton";
+import { KpiSkeleton } from "@/components/Skeleton";
 import Breadcrumb from "@/components/Breadcrumb";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import KeywordTable, { type SortKey, type KeywordRow } from "@/components/KeywordTable";
 
 type ViewTab = "keywords" | "rank" | "fraud";
 
@@ -71,7 +71,6 @@ const strategyLabels: Record<string, string> = {
   max_conversion: "최대 전환", time_based: "시간대 차등", manual: "수동",
 };
 
-type SortKey = "text" | "bid" | "rank" | "ctr" | "cpc" | "conversions" | "cost" | "impressions" | "clicks" | "qi";
 type SortDir = "asc" | "desc";
 
 const allColumns = [
@@ -103,6 +102,7 @@ export default function KeywordsPage() {
   const [accountFilter, setAccountFilter] = useState("전체 계정");
   const [strategyFilter, setStrategyFilter] = useState("전체 전략");
   const [fraudEvents, setFraudEvents] = useState(initialFraudEvents);
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
   const { addToast } = useToast();
 
   // ── API 데이터 페칭 (폴백 지원) ──
@@ -214,18 +214,78 @@ export default function KeywordsPage() {
     return sortDir === "asc" ? cmp : -cmp;
   });
 
-  const bulkBidChange = (delta: number) => {
+  // ── 일괄 입찎 변경 (API 연동 + 낙관적 UI + 롤백) ──
+  const bulkBidChange = async (delta: number) => {
+    if (isBulkLoading) return;
+    const affected = keywords.filter((k) => selectedKws.has(k.id));
+    if (affected.length === 0) return;
+    const prevKeywords = [...keywords]; // 롤백용 스냅샷
+
+    // 1. 낙관적 UI 업데이트
     setKeywords((prev) => prev.map((k) => selectedKws.has(k.id) ? { ...k, bid: Math.max(70, k.bid + delta) } : k));
-    addToast("success", `입찰가 ${delta > 0 ? "+" : ""}${delta}원 일괄 변경`, `${selectedKws.size}개 키워드의 입찰가가 변경되었습니다.`);
     setSelectedKws(new Set());
+    setIsBulkLoading(true);
+
+    try {
+      // 2. 병렬 API 호출 (부분 실패 허용)
+      const results = await Promise.allSettled(
+        affected.map((kw) =>
+          apiMutate(`/api/keywords/${kw.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ newBid: Math.max(70, kw.bid + delta), reason: `일괄 ${delta > 0 ? '+' : ''}${delta}원 조정` }),
+          })
+        )
+      );
+      const failCount = results.filter((r) => r.status === 'rejected').length;
+      if (failCount > 0) {
+        addToast('warning', `일부 실패`, `${affected.length}개 중 ${failCount}개 API 오류 발생`);
+      } else {
+        addToast('success', `입찎가 ${delta > 0 ? '+' : ''}${delta}원 일괄 변경`, `${affected.length}개 키워드 적용 완료`);
+      }
+    } catch {
+      // 3. 전체 실패 시 롤백
+      setKeywords(prevKeywords);
+      setSelectedKws(new Set(affected.map((k) => k.id)));
+      addToast('error', '일괄 변경 실패', '서버 오류로 변경이 취소되었습니다.');
+    } finally {
+      setIsBulkLoading(false);
+    }
   };
 
-  const bulkBidChangePct = (pct: number) => {
+  const bulkBidChangePct = async (pct: number) => {
+    if (isBulkLoading) return;
+    const affected = keywords.filter((k) => selectedKws.has(k.id));
+    if (affected.length === 0) return;
+    const prevKeywords = [...keywords];
+
     setKeywords((prev) => prev.map((k) =>
       selectedKws.has(k.id) ? { ...k, bid: Math.max(70, Math.round(k.bid * (1 + pct / 100))) } : k
     ));
-    addToast("success", `입찰가 ${pct > 0 ? "+" : ""}${pct}% 일괄 변경`, `${selectedKws.size}개 키워드의 입찰가가 ${pct}% 조정됐습니다.`);
     setSelectedKws(new Set());
+    setIsBulkLoading(true);
+
+    try {
+      const results = await Promise.allSettled(
+        affected.map((kw) =>
+          apiMutate(`/api/keywords/${kw.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ newBid: Math.max(70, Math.round(kw.bid * (1 + pct / 100))), reason: `일괄 ${pct > 0 ? '+' : ''}${pct}% 조정` }),
+          })
+        )
+      );
+      const failCount = results.filter((r) => r.status === 'rejected').length;
+      if (failCount > 0) {
+        addToast('warning', `일부 실패`, `${affected.length}개 중 ${failCount}개 API 오류`);
+      } else {
+        addToast('success', `입찎가 ${pct > 0 ? '+' : ''}${pct}% 일괄 변경`, `${affected.length}개 키워드 적용 완료`);
+      }
+    } catch {
+      setKeywords(prevKeywords);
+      setSelectedKws(new Set(affected.map((k) => k.id)));
+      addToast('error', '일괄 변경 실패', '서버 오류로 변경이 취소되었습니다.');
+    } finally {
+      setIsBulkLoading(false);
+    }
   };
 
   const bulkOff = () => {
@@ -318,7 +378,7 @@ export default function KeywordsPage() {
                     <span style={{ marginLeft: 8, color: "var(--text-secondary)", fontSize: "0.857rem" }}>저비용 고효율 키워드를 발견했습니다</span>
                   </div>
                 </div>
-                <button className="btn btn-primary btn-sm">추천 보기</button>
+                <button className="btn btn-primary btn-sm" onClick={() => setShowAiModal(true)}>추천 보기</button>
               </div>
             </div>
 
@@ -370,151 +430,37 @@ export default function KeywordsPage() {
             {selectedKws.size > 0 && (
               <div style={{ display: "flex", gap: 8, marginBottom: 16, padding: "10px 16px", background: "var(--primary-light)", borderRadius: "var(--radius-lg)", alignItems: "center", flexWrap: "wrap" }}>
                 <span style={{ fontSize: "0.857rem", color: "var(--primary)", fontWeight: 600 }}>{selectedKws.size}개 선택됨:</span>
-                <button className="btn btn-sm btn-secondary" onClick={() => bulkBidChange(100)}>입찰가 +100원</button>
-                <button className="btn btn-sm btn-secondary" onClick={() => bulkBidChange(-100)}>입찰가 -100원</button>
-                <button className="btn btn-sm btn-secondary" onClick={() => bulkBidChangePct(10)}>+10%</button>
-                <button className="btn btn-sm btn-secondary" onClick={() => bulkBidChangePct(-10)}>-10%</button>
-                <button className="btn btn-sm btn-secondary" onClick={() => { setKeywords((prev) => prev.map((k) => selectedKws.has(k.id) ? { ...k, strategy: "target_cpc" } : k)); addToast("success", "전략 변경", `${selectedKws.size}개 키워드 전략이 '목표 CPC'로 변경되었습니다.`); setSelectedKws(new Set()); }}>전략 변경</button>
-                <button className="btn btn-sm btn-secondary" style={{ color: "var(--error)" }} onClick={bulkOff}>OFF</button>
+                <button className="btn btn-sm btn-secondary" disabled={isBulkLoading} onClick={() => bulkBidChange(100)}>입찰가 +100원</button>
+                <button className="btn btn-sm btn-secondary" disabled={isBulkLoading} onClick={() => bulkBidChange(-100)}>입찰가 -100원</button>
+                <button className="btn btn-sm btn-secondary" disabled={isBulkLoading} onClick={() => bulkBidChangePct(10)}>+10%</button>
+                <button className="btn btn-sm btn-secondary" disabled={isBulkLoading} onClick={() => bulkBidChangePct(-10)}>-10%</button>
+                <button className="btn btn-sm btn-secondary" disabled={isBulkLoading} onClick={() => { setKeywords((prev) => prev.map((k) => selectedKws.has(k.id) ? { ...k, strategy: "target_cpc" } : k)); addToast("success", "전략 변경", `${selectedKws.size}개 키워드 전략이 '목표 CPC'로 변경되었습니다.`); setSelectedKws(new Set()); }}>전략 변경</button>
+                <button className="btn btn-sm btn-secondary" disabled={isBulkLoading} style={{ color: "var(--error)" }} onClick={bulkOff}>OFF</button>
+                {isBulkLoading && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>저장 중...</span>}
               </div>
             )}
 
-            {/* Keyword Table — sortable + column-customizable + virtual scroll */}
+            {/* Keyword Table — KeywordTable 컴포넌트 사용 (Hook 규칙 위반 수정) */}
             <div className="card">
-              {(() => {
-                const useVirtual = filteredKeywords.length > 50;
-                const tableRef = useRef<HTMLDivElement>(null);
-                const rowVirtualizer = useVirtualizer({
-                  count: filteredKeywords.length,
-                  getScrollElement: () => tableRef.current,
-                  estimateSize: () => 52,
-                  overscan: 10,
-                });
-
-                const renderRow = (kw: typeof filteredKeywords[0]) => (
-                  <>
-                    <td><input type="checkbox" checked={selectedKws.has(kw.id)} onChange={() => toggleKw(kw.id)} /></td>
-                    {visibleCols.has("text") && <td className="keyword-sticky-col" style={{ fontWeight: 600 }}
-                      data-selected={selectedKws.has(kw.id) || undefined}>
-                      {kw.text}
-                      {kw.trend === "up" ? <TrendingUp size={14} color="var(--success)" style={{ marginLeft: 6 }} /> : <TrendingDown size={14} color="var(--error)" style={{ marginLeft: 6 }} />}
-                    </td>}
-                    {visibleCols.has("account") && <td style={{ fontSize: "0.857rem", color: "var(--text-secondary)" }}>{kw.account}</td>}
-                    {visibleCols.has("group") && <td style={{ fontSize: "0.786rem", color: "var(--text-muted)" }}>{kw.group}</td>}
-                    {visibleCols.has("bid") && <td style={{ fontWeight: 600, cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); setEditingBid(kw.id); setEditBidValue(String(kw.bid)); }}>
-                      {editingBid === kw.id ? (
-                        <input className="form-input" type="number" value={editBidValue} onChange={(e) => setEditBidValue(e.target.value)} onBlur={() => saveBid(kw.id)} onKeyDown={(e) => { if (e.key === "Enter") saveBid(kw.id); if (e.key === "Escape") setEditingBid(null); }} autoFocus style={{ width: 80, padding: "2px 6px", fontSize: "0.857rem" }} />
-                      ) : (
-                        <>₩{kw.bid.toLocaleString()}</>   
-                      )}
-                    </td>}
-                    {visibleCols.has("rank") && <td><span className={`badge ${kw.rank <= 2 ? "badge-success" : kw.rank <= 4 ? "badge-warning" : "badge-error"}`}>{kw.rank}위</span></td>}
-                    {visibleCols.has("strategy") && <td>
-                      <div className="strategy-dropdown">
-                        <span className="badge badge-info" style={{ cursor: "pointer" }} onClick={() => setEditingStrategy(editingStrategy === kw.id ? null : kw.id)}>{strategyLabels[kw.strategy]}</span>
-                        {editingStrategy === kw.id && (
-                          <div className="strategy-dropdown-menu">
-                            {Object.entries(strategyLabels).map(([key, label]) => (
-                              <div key={key} className={`strategy-dropdown-item ${kw.strategy === key ? "active" : ""}`} onClick={() => changeStrategy(kw.id, key)}>
-                                {kw.strategy === key && <CheckCircle2 size={12} />} {label}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </td>}
-                    {visibleCols.has("qi") && <td>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-                        {"★".repeat(Math.min(kw.qi, 5))}
-                        <span style={{ fontSize: "0.714rem", color: "var(--text-muted)", marginLeft: 2 }}>{kw.qi}/10</span>
-                      </span>
-                    </td>}
-                    {visibleCols.has("impressions") && <td>{kw.impressions.toLocaleString()}</td>}
-                    {visibleCols.has("clicks") && <td>{kw.clicks.toLocaleString()}</td>}
-                    {visibleCols.has("ctr") && <td>{kw.ctr}%</td>}
-                    {visibleCols.has("cpc") && <td>₩{kw.cpc.toLocaleString()}</td>}
-                    {visibleCols.has("conversions") && <td style={{ fontWeight: 600 }}>{kw.conversions}</td>}
-                    {visibleCols.has("cost") && <td>₩{kw.cost.toLocaleString()}</td>}
-                  </>
-                );
-
-                const headerRow = (
-                  <tr>
-                    <th style={{ width: 32 }}><input type="checkbox" checked={selectedKws.size === keywords.length} onChange={toggleAllKw} /></th>
-                    {visibleCols.has("text") && <th className={`sortable ${sortKey === "text" ? "sort-active" : ""}`} onClick={() => handleSort("text")}>키워드 <span className="sort-icon">{sortKey === "text" ? (sortDir === "asc" ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ArrowUpDown size={12}/>}</span></th>}
-                    {visibleCols.has("account") && <th>계정</th>}
-                    {visibleCols.has("group") && <th>광고그룹</th>}
-                    {visibleCols.has("bid") && <th className={`sortable ${sortKey === "bid" ? "sort-active" : ""}`} onClick={() => handleSort("bid")}>입찰가 <span className="sort-icon">{sortKey === "bid" ? (sortDir === "asc" ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ArrowUpDown size={12}/>}</span></th>}
-                    {visibleCols.has("rank") && <th className={`sortable ${sortKey === "rank" ? "sort-active" : ""}`} onClick={() => handleSort("rank")}>순위 <span className="sort-icon">{sortKey === "rank" ? (sortDir === "asc" ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ArrowUpDown size={12}/>}</span></th>}
-                    {visibleCols.has("strategy") && <th>전략</th>}
-                    {visibleCols.has("qi") && <th className={`sortable ${sortKey === "qi" ? "sort-active" : ""}`} onClick={() => handleSort("qi")}>품질 <span className="sort-icon">{sortKey === "qi" ? (sortDir === "asc" ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ArrowUpDown size={12}/>}</span></th>}
-                    {visibleCols.has("impressions") && <th className={`sortable ${sortKey === "impressions" ? "sort-active" : ""}`} onClick={() => handleSort("impressions")}>노출 <span className="sort-icon">{sortKey === "impressions" ? (sortDir === "asc" ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ArrowUpDown size={12}/>}</span></th>}
-                    {visibleCols.has("clicks") && <th className={`sortable ${sortKey === "clicks" ? "sort-active" : ""}`} onClick={() => handleSort("clicks")}>클릭 <span className="sort-icon">{sortKey === "clicks" ? (sortDir === "asc" ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ArrowUpDown size={12}/>}</span></th>}
-                    {visibleCols.has("ctr") && <th className={`sortable ${sortKey === "ctr" ? "sort-active" : ""}`} onClick={() => handleSort("ctr")}>CTR <span className="sort-icon">{sortKey === "ctr" ? (sortDir === "asc" ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ArrowUpDown size={12}/>}</span></th>}
-                    {visibleCols.has("cpc") && <th className={`sortable ${sortKey === "cpc" ? "sort-active" : ""}`} onClick={() => handleSort("cpc")}>CPC <span className="sort-icon">{sortKey === "cpc" ? (sortDir === "asc" ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ArrowUpDown size={12}/>}</span></th>}
-                    {visibleCols.has("conversions") && <th className={`sortable ${sortKey === "conversions" ? "sort-active" : ""}`} onClick={() => handleSort("conversions")}>전환 <span className="sort-icon">{sortKey === "conversions" ? (sortDir === "asc" ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ArrowUpDown size={12}/>}</span></th>}
-                    {visibleCols.has("cost") && <th className={`sortable ${sortKey === "cost" ? "sort-active" : ""}`} onClick={() => handleSort("cost")}>비용 <span className="sort-icon">{sortKey === "cost" ? (sortDir === "asc" ? <ChevronUp size={12}/> : <ChevronDown size={12}/>) : <ArrowUpDown size={12}/>}</span></th>}
-                  </tr>
-                );
-
-                if (!useVirtual) {
-                  // 일반 렌더링 (50행 이하)
-                  return (
-                    <div className="table-wrapper">
-                      <table>
-                        <thead>{headerRow}</thead>
-                        <tbody>
-                          {filteredKeywords.map((kw) => (
-                            <tr key={kw.id} style={{ background: selectedKws.has(kw.id) ? "var(--primary-light)" : undefined }}>
-                              {renderRow(kw)}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                }
-
-                // 가상 스크롤 (50행 초과)
-                const virtualItems = rowVirtualizer.getVirtualItems();
-                return (
-                  <div className="virtual-table-container">
-                    <div className="virtual-table-header">
-                      <table><thead>{headerRow}</thead></table>
-                    </div>
-                    <div ref={tableRef} className="virtual-table-body" style={{ maxHeight: 600, overflowY: "auto" }}>
-                      <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
-                        <table style={{ position: "absolute", top: 0, left: 0, width: "100%" }}>
-                          <tbody>
-                            {virtualItems.map((vRow) => {
-                              const kw = filteredKeywords[vRow.index];
-                              return (
-                                <tr
-                                  key={kw.id}
-                                  data-index={vRow.index}
-                                  ref={rowVirtualizer.measureElement}
-                                  style={{
-                                    position: "absolute", top: 0, left: 0, width: "100%",
-                                    height: `${vRow.size}px`,
-                                    transform: `translateY(${vRow.start}px)`,
-                                    background: selectedKws.has(kw.id) ? "var(--primary-light)" : undefined,
-                                  }}
-                                >
-                                  {renderRow(kw)}
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    <div className="virtual-table-footer">
-                      <span>총 {filteredKeywords.length.toLocaleString()}개 키워드</span>
-                      <span className="badge badge-info">가상 스크롤 활성</span>
-                    </div>
-                  </div>
-                );
-              })()}
+              <KeywordTable
+                keywords={filteredKeywords as KeywordRow[]}
+                selectedKws={selectedKws}
+                visibleCols={visibleCols}
+                sortKey={sortKey}
+                sortDir={sortDir}
+                editingBid={editingBid}
+                editBidValue={editBidValue}
+                editingStrategy={editingStrategy}
+                onToggleAll={toggleAllKw}
+                onToggleRow={toggleKw}
+                onSort={handleSort}
+                onBidClick={(id, bid) => { setEditingBid(id); setEditBidValue(String(bid)); }}
+                onBidChange={setEditBidValue}
+                onBidSave={saveBid}
+                onBidCancel={() => setEditingBid(null)}
+                onStrategyToggle={(id) => setEditingStrategy(editingStrategy === id ? null : id)}
+                onStrategyChange={changeStrategy}
+              />
             </div>
 
             {/* 5-D: Bid History Panel */}
