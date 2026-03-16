@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
 // ──── Prisma Client 싱글톤 ────
 // Next.js HMR에서 PrismaClient 인스턴스 중복 생성 방지
@@ -9,7 +10,13 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 function createPrismaClient(): PrismaClient {
   // Prisma v7: 항상 드라이버 어댑터 필요
   const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/agency_os';
-  const adapter = new PrismaPg({ connectionString });
+  const pool = new Pool({
+    connectionString,
+    ssl: { rejectUnauthorized: false }, // Supabase SSL
+    max: 1, // Vercel 서버리스: 연결 최소화
+    connectionTimeoutMillis: 10000,
+  });
+  const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],

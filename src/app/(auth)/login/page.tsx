@@ -4,7 +4,8 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, TrendingUp, BarChart3, FileText, ArrowRight, ArrowLeft, Check, Mail, KeyRound, Loader2, ChevronDown, ChevronUp } from "lucide-react";
-import { login, signup } from "@/utils/auth";
+import { signIn } from "next-auth/react";
+import { signup } from "@/utils/auth";
 
 type AuthView = "login" | "signup" | "onboarding" | "verify" | "reset";
 
@@ -56,22 +57,28 @@ function LoginPageInner() {
     }
 
     setIsLoading(true);
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 600));
 
-    const result = login(loginEmail, loginPassword);
+    try {
+      const result = await signIn("credentials", {
+        email: loginEmail,
+        password: loginPassword,
+        redirect: false,
+      });
 
-    if (result.success) {
-      router.push("/dashboard");
-    } else {
-      const attempts = loginAttempts + 1;
-      setLoginAttempts(attempts);
-      setAuthError(result.error || "로그인에 실패했습니다.");
+      if (result?.ok) {
+        router.push("/dashboard");
+      } else {
+        const attempts = loginAttempts + 1;
+        setLoginAttempts(attempts);
+        setAuthError(result?.error === "CredentialsSignin" ? "이메일 또는 비밀번호가 올바르지 않습니다." : "로그인에 실패했습니다.");
 
-      if (attempts >= 5) {
-        setIsLocked(true);
-        setTimeout(() => { setIsLocked(false); setLoginAttempts(0); }, 15000);
+        if (attempts >= 5) {
+          setIsLocked(true);
+          setTimeout(() => { setIsLocked(false); setLoginAttempts(0); }, 15000);
+        }
       }
+    } catch {
+      setAuthError("로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
     setIsLoading(false);
   };
