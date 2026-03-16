@@ -36,11 +36,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const isValid = await bcrypt.compare(password, user.passwordHash);
         if (!isValid) return null;
 
-        // 마지막 로그인 시간 업데이트 (비차단)
-        prisma.user.update({
-          where: { id: user.id },
-          data: { lastLoginAt: new Date() },
-        }).catch(console.error);
+
 
         return {
           id: user.id,
