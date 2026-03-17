@@ -131,7 +131,7 @@ function LoginPageInner() {
         <div className="login-hero-feature"><BarChart3 size={20} /><span>📊 30개 계정을 하나의 대시보드에서</span></div>
         <div className="login-hero-feature"><FileText size={20} /><span>📋 원클릭 클라이언트 리포트 자동 생성</span></div>
         <div style={{ marginTop: 40, padding: "14px 18px", background: "rgba(255,255,255,0.1)", borderRadius: 12, fontSize: "0.857rem" }}>
-          💡 <strong>데모 계정:</strong> admin@agency.com / password
+          💡 <strong>데모 계정:</strong> admin@agency.com / password123
         </div>
       </div>
 
