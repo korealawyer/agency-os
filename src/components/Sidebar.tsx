@@ -9,7 +9,7 @@ import {
   Menu, X, Megaphone, ChevronDown,
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { logout, getCurrentUser, type User } from "@/utils/auth";
+import { useSession, signOut } from "next-auth/react";
 
 // ── 섹션 정의 (순서 고정, 각 섹션에 기본 열림 여부 포함) ──
 const NAV_SECTIONS = [
@@ -69,7 +69,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const { data: session } = useSession();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // 각 섹션의 열림 상태 (기본값으로 초기화)
@@ -78,7 +78,6 @@ export default function Sidebar() {
   );
 
   useEffect(() => {
-    setUser(getCurrentUser());
     // 현재 활성 경로가 포함된 섹션은 자동으로 열기
     NAV_SECTIONS.forEach((sec) => {
       const hasActive = sec.items.some((item) =>
@@ -97,9 +96,11 @@ export default function Sidebar() {
   };
 
   const handleLogout = () => {
-    logout();
-    router.push("/login");
+    signOut({ callbackUrl: "/login" });
   };
+
+  const userName = session?.user?.name || "사용자";
+  const userRole = (session?.user as any)?.role || "editor";
 
   const sidebarContent = (
     <>
@@ -164,11 +165,11 @@ export default function Sidebar() {
       </nav>
 
       <div className="sidebar-user">
-        <div className="sidebar-user-avatar">{user?.name?.[0] || "김"}</div>
+        <div className="sidebar-user-avatar">{userName[0]}</div>
         <div className="sidebar-user-info">
-          <div className="sidebar-user-name">{user?.name || "김대행"}</div>
+          <div className="sidebar-user-name">{userName}</div>
           <div className="sidebar-user-role">
-            {user?.role === "owner" ? "소유자" : user?.role === "admin" ? "관리자" : "Agency"}
+            {userRole === "owner" ? "소유자" : userRole === "admin" ? "관리자" : userRole === "editor" ? "에디터" : "뷰어"}
           </div>
         </div>
         <button
