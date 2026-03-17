@@ -1,26 +1,9 @@
 import NextAuth from 'next-auth';
 import { authConfig } from '@/lib/auth.config';
-import { NextResponse } from 'next/server';
 
-const { auth } = NextAuth(authConfig);
-
-// ──── 보안 헤더 ────
-const securityHeaders: Record<string, string> = {
-  'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
-  'X-XSS-Protection': '1; mode=block',
-  'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-};
-
-export default auth((req) => {
-  const response = NextResponse.next();
-  Object.entries(securityHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
-  return response;
-});
+// NextAuth를 미들웨어로 직접 export — authConfig.callbacks.authorized가 정상 동작
+// ⚠️ 커스텀 콜백에서 NextResponse.next()를 반환하면 authorized 결과를 오버라이드하므로 주의
+export default NextAuth(authConfig).auth;
 
 export const config = {
   matcher: [
