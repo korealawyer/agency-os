@@ -2,6 +2,8 @@ import type { NextAuthConfig } from 'next-auth';
 
 // Edge Runtime에서도 실행 가능한 auth config (Prisma 없음)
 export const authConfig: NextAuthConfig = {
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+  trustHost: true,
   session: {
     strategy: 'jwt',
     maxAge: 8 * 60 * 60, // 8시간

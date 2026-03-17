@@ -4,11 +4,13 @@
 
 ### 🔐 NextAuth Vercel 배포 인증 오류 픽스
 - **Session API 연동** (`lib/api-helpers.ts`): Vercel 프로덕션 환경에서 생성되는 보안 쿠키(`__Secure-authjs.session-token`)를 API 라우트가 정상적으로 인식하지 못하는 401 에러 해결. `getToken()` 대신 NextAuth v5의 `auth()` 기반 세션 검증 로직으로 변경.
+- **Vercel 프로덕션 Config 강화** (`lib/auth.config.ts`): Vercel Edge 런타임 및 Node.js API 라우트 환경에서 환경 변수 인식 오류를 방지하기 위해 `secret`과 `trustHost: true` 명시적 추가 적용.
 
 ### 수정된 파일 목록
 | 파일 | 변경 내용 |
 |------|----------|
 | `lib/api-helpers.ts` | [MODIFY] API 인증 유틸리티 `requireAuth` 로직 변경 |
+| `lib/auth.config.ts` | [MODIFY] Vercel 배포 호환을 위해 `secret`, `trustHost` 속성 추가 |
 
 ---
 
