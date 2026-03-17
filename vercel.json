@@ -2,9 +2,5 @@
   "buildCommand": "npx prisma generate && next build",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["icn1"],
-  "crons": [
-    { "path": "/api/cron/auto-bid", "schedule": "0 */6 * * *" },
-    { "path": "/api/click-fraud/analyze", "schedule": "*/30 * * * *" }
-  ]
+  "regions": ["icn1"]
 }
