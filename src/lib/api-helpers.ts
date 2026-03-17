@@ -43,7 +43,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
-  role: 'owner' | 'admin' | 'editor' | 'viewer';
+  role: 'super_admin' | 'owner' | 'admin' | 'editor' | 'viewer';
   organizationId: string;
 }
 
@@ -66,6 +66,12 @@ export async function requireAuth(req: NextRequest): Promise<AuthUser> {
 export function requireRole(user: AuthUser, ...roles: AuthUser['role'][]) {
   if (!roles.includes(user.role)) {
     throw new ForbiddenError('이 작업을 수행할 권한이 없습니다.');
+  }
+}
+
+export function requireSuperAdmin(user: AuthUser) {
+  if (user.role !== 'super_admin') {
+    throw new ForbiddenError('시스템 관리자 권한이 필요합니다.');
   }
 }
 

@@ -15,6 +15,7 @@ datasource db {
 // ============================================================
 
 enum UserRole {
+  super_admin
   owner
   admin
   editor
