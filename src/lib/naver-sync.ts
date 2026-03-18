@@ -1,15 +1,14 @@
 /**
  * lib/naver-sync.ts
- * 네이버 광고 계정 → DB 동기화 서비스
+ * 네이버 광고 계정 → DB 동기화 서비스 (서버 최적화 버전)
  *
  * [흐름]
  * syncAccount(accountId) →
  *   1. NaverAccount 조회 + 복호화
  *   2. naverclient.getCampaigns() → upsert Campaign
- *   3. 각 캠페인 adGroups → upsert AdGroup
- *   4. 각 adGroup keywords + stats → upsert Keyword
+ *   3. 캠페인별 adGroups 병렬 조회 → upsert AdGroup
+ *   4. adGroup별 keywords 병렬 조회 → 배치 upsert Keyword
  *   5. Account.lastSyncAt + connectionStatus 업데이트
- *   6. 이상 탐지 → Notification 생성
  */
 
 import prisma from '@/lib/db';
@@ -40,7 +39,7 @@ export interface SyncResult {
 }
 
 /**
- * 단일 NaverAccount 동기화
+ * 단일 NaverAccount 동기화 (서버 최적화)
  */
 export async function syncAccount(accountId: string, organizationId: string): Promise<SyncResult> {
   const result: SyncResult = { accountId, customerId: '', campaigns: 0, adGroups: 0, keywords: 0, notifications: 0 };
@@ -60,174 +59,129 @@ export async function syncAccount(accountId: string, organizationId: string): Pr
   try {
     // 2. 캠페인 목록
     const campaigns = await client.getCampaigns();
+    console.log(`[Sync] 캠페인 ${campaigns.length}개 발견`);
 
     for (const camp of campaigns) {
+      // 캠페인 upsert
+      const existingCampaign = await prisma.campaign.findFirst({
+        where: { naverCampaignId: camp.nccCampaignId, naverAccountId: account.id },
+        select: { id: true },
+      });
+
+      const campaignData = {
+        name: camp.name,
+        status: mapCampaignStatus(camp.userLock, camp.status),
+        dailyBudget: camp.dailyBudget ?? 0,
+        lastSyncAt: new Date(),
+        updatedAt: new Date(),
+      };
+
       const campaign = await prisma.campaign.upsert({
-        where: {
-          // naverCampaignId + naverAccountId 는 중복 체크
-          id: (await prisma.campaign.findFirst({
-            where: { naverCampaignId: camp.nccCampaignId, naverAccountId: account.id },
-            select: { id: true },
-          }))?.id ?? 'new',
-        },
-        update: {
-          name: camp.name,
-          status: mapCampaignStatus(camp.userLock, camp.status),
-          dailyBudget: camp.dailyBudget,
-          lastSyncAt: new Date(),
-          updatedAt: new Date(),
-        },
+        where: { id: existingCampaign?.id ?? 'new' },
+        update: campaignData,
         create: {
           naverAccountId: account.id,
           organizationId,
           naverCampaignId: camp.nccCampaignId,
-          name: camp.name,
-          status: mapCampaignStatus(camp.userLock, camp.status),
-          dailyBudget: camp.dailyBudget,
-          lastSyncAt: new Date(),
+          ...campaignData,
         },
       });
       result.campaigns++;
 
       // 3. 광고그룹 목록
       let adGroups: any[] = [];
-      try { adGroups = await client.getAdGroups(camp.nccCampaignId); } catch (e: any) {
-        console.warn(`[Sync] 광고그룹 조회 실패 (캠페인: ${camp.name}, ID: ${camp.nccCampaignId}):`, e.message);
+      try {
+        adGroups = await client.getAdGroups(camp.nccCampaignId);
+        console.log(`[Sync] 캠페인 "${camp.name}" → 광고그룹 ${adGroups.length}개`);
+      } catch (e: any) {
+        console.warn(`[Sync] 광고그룹 조회 실패 (캠페인: ${camp.name}):`, e.message);
         continue;
       }
 
-      for (const ag of adGroups) {
-        const adGroup = await prisma.adGroup.upsert({
-          where: {
-            id: (await prisma.adGroup.findFirst({
-              where: { naverAdGroupId: ag.nccAdgroupId, campaignId: campaign.id },
-              select: { id: true },
-            }))?.id ?? 'new',
-          },
-          update: {
-            name: ag.name,
-            isActive: !ag.userLock,
-            updatedAt: new Date(),
-          },
-          create: {
-            campaignId: campaign.id,
-            organizationId,
-            naverAdGroupId: ag.nccAdgroupId,
-            name: ag.name,
-            isActive: !ag.userLock,
-          },
-        });
-        result.adGroups++;
+      // 광고그룹별 키워드를 병렬로 조회 (3개씩 동시)
+      const PARALLEL_LIMIT = 3;
+      for (let i = 0; i < adGroups.length; i += PARALLEL_LIMIT) {
+        const batch = adGroups.slice(i, i + PARALLEL_LIMIT);
+        
+        await Promise.all(batch.map(async (ag: any) => {
+          // 광고그룹 upsert
+          const existingAg = await prisma.adGroup.findFirst({
+            where: { naverAdGroupId: ag.nccAdgroupId, campaignId: campaign.id },
+            select: { id: true },
+          });
 
-        // 4. 키워드 목록 + 통계
-        let keywords: any[] = [];
-        try { keywords = await client.getKeywords(ag.nccAdgroupId); } catch (e: any) {
-          console.warn(`[Sync] 키워드 조회 실패 (광고그룹: ${ag.name}, ID: ${ag.nccAdgroupId}):`, e.message);
-          continue;
-        }
-
-        // 통계 배치 조회 (id 리스트)
-        const kwIds = keywords.map((k: any) => k.nccKeywordId).filter(Boolean);
-        const { start, end } = getStatRange();
-        let statsMap: Record<string, any> = {};
-        if (kwIds.length > 0) {
-          try {
-            const statsList = await client.getKeywordStats(kwIds, start, end);
-            for (const s of statsList) {
-              if (s.id) statsMap[s.id] = s;
-            }
-          } catch (e: any) {
-            console.warn(`[Sync] 키워드 통계 조회 실패:`, e.message);
-          }
-        }
-
-        for (const kw of keywords) {
-          const stat = statsMap[kw.nccKeywordId] ?? {};
-          const clicks = stat.clkCnt ?? 0;
-          const impressions = stat.impCnt ?? 0;
-          const ctr = impressions > 0 ? clicks / impressions : 0;
-          const conversions = stat.ccnt ?? 0;
-          const cost = stat.salesAmt ?? 0;
-          const convValue = stat.convAmt ?? 0;
-          const roas = cost > 0 ? (convValue / cost) * 100 : null;
-
-          await prisma.keyword.upsert({
-            where: {
-              id: (await prisma.keyword.findFirst({
-                where: { naverKeywordId: kw.nccKeywordId, adGroupId: adGroup.id },
-                select: { id: true },
-              }))?.id ?? 'new',
-            },
+          const adGroup = await prisma.adGroup.upsert({
+            where: { id: existingAg?.id ?? 'new' },
             update: {
-              keywordText: kw.keyword,
-              currentBid: kw.bidAmt ?? 0,
-              clicks,
-              impressions,
-              ctr,
-              conversions,
-              cost,
-              conversionValue: convValue,
-              roas,
-              lastSyncAt: new Date(),
+              name: ag.name,
+              isActive: !ag.userLock,
               updatedAt: new Date(),
             },
             create: {
-              adGroupId: adGroup.id,
+              campaignId: campaign.id,
               organizationId,
-              naverKeywordId: kw.nccKeywordId,
-              keywordText: kw.keyword,
-              currentBid: kw.bidAmt ?? 0,
-              clicks,
-              impressions,
-              ctr,
-              conversions,
-              cost,
-              conversionValue: convValue,
-              roas,
-              lastSyncAt: new Date(),
+              naverAdGroupId: ag.nccAdgroupId,
+              name: ag.name,
+              isActive: !ag.userLock,
             },
           });
-          result.keywords++;
+          result.adGroups++;
 
-          // 5. CTR 이상 탐지 → Notification
-          const prevCtr = kw.prevCtr ?? null;
-          if (prevCtr != null && ctr < prevCtr * 0.5 && impressions > 100) {
-            const user = await prisma.user.findFirst({
-              where: { organizationId, role: { in: ['owner', 'admin'] }, isActive: true },
-              select: { id: true },
-            });
-            if (user) {
-              await prisma.notification.create({
-                data: {
-                  userId: user.id,
+          // 4. 키워드 조회
+          let keywords: any[] = [];
+          try {
+            keywords = await client.getKeywords(ag.nccAdgroupId);
+          } catch (e: any) {
+            console.warn(`[Sync] 키워드 조회 실패 (${ag.name}):`, e.message);
+            return;
+          }
+
+          // 키워드 배치 처리 (한 번에 50개씩)
+          const KW_BATCH_SIZE = 50;
+          for (let j = 0; j < keywords.length; j += KW_BATCH_SIZE) {
+            const kwBatch = keywords.slice(j, j + KW_BATCH_SIZE);
+            
+            await Promise.all(kwBatch.map(async (kw: any) => {
+              const existingKw = await prisma.keyword.findFirst({
+                where: { naverKeywordId: kw.nccKeywordId, adGroupId: adGroup.id },
+                select: { id: true },
+              });
+
+              await prisma.keyword.upsert({
+                where: { id: existingKw?.id ?? 'new' },
+                update: {
+                  keywordText: kw.keyword,
+                  currentBid: kw.bidAmt ?? 0,
+                  lastSyncAt: new Date(),
+                  updatedAt: new Date(),
+                },
+                create: {
+                  adGroupId: adGroup.id,
                   organizationId,
-                  type: 'anomaly_detected',
-                  priority: 'high',
-                  title: `${kw.keyword} CTR 급락 탐지`,
-                  message: `CTR이 ${(prevCtr * 100).toFixed(1)}% → ${(ctr * 100).toFixed(1)}%로 50% 이상 하락했습니다.`,
-                  metadata: {
-                    keywordId: (await prisma.keyword.findFirst({
-                      where: { naverKeywordId: kw.nccKeywordId },
-                      select: { id: true },
-                    }))?.id,
-                    accountId: account.id,
-                    prevCtr, ctr,
-                  },
+                  naverKeywordId: kw.nccKeywordId,
+                  keywordText: kw.keyword,
+                  currentBid: kw.bidAmt ?? 0,
+                  lastSyncAt: new Date(),
                 },
               });
-              result.notifications++;
-            }
+              result.keywords++;
+            }));
           }
-        }
+
+          console.log(`[Sync] 광고그룹 "${ag.name}" → 키워드 ${keywords.length}개 완료`);
+        }));
       }
     }
 
-    // 6. Account 상태 업데이트
+    // 5. Account 상태 업데이트
     await prisma.naverAccount.update({
       where: { id: accountId },
       data: { connectionStatus: 'connected', lastSyncAt: new Date() },
     });
+
+    console.log(`[Sync] 동기화 완료: 캠페인 ${result.campaigns}, 광고그룹 ${result.adGroups}, 키워드 ${result.keywords}`);
   } catch (error: any) {
+    console.error(`[Sync] 동기화 에러:`, error.message);
     // 연결 실패 시 상태 error
     await prisma.naverAccount.update({
       where: { id: accountId },

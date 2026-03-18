@@ -2,6 +2,9 @@ import { NextRequest } from 'next/server';
 import { apiResponse, requireAuth, withErrorHandler } from '@/lib/api-helpers';
 import { syncAccount } from '@/lib/naver-sync';
 
+// Vercel Hobby 최대 60초 타임아웃
+export const maxDuration = 60;
+
 /**
  * POST /api/accounts/[id]/sync
  * 특정 네이버 계정의 캠페인/광고그룹/키워드/통계를 즉시 동기화합니다.

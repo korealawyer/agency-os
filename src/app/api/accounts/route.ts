@@ -31,6 +31,11 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
         connectionStatus: true, lastSyncAt: true, dailyBudget: true,
         monthlySpend: true, commissionRate: true, isActive: true,
         createdAt: true, updatedAt: true,
+        _count: {
+          select: {
+            campaigns: { where: { deletedAt: null } },
+          },
+        },
       },
     }),
     prisma.naverAccount.count({

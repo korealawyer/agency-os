@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { syncAllAccounts } from '@/lib/naver-sync';
 import prisma from '@/lib/db';
 
+// Vercel Hobby 최대 60초 타임아웃
+export const maxDuration = 60;
+
 /**
  * POST /api/cron/sync-naver
  * 전체 조직의 네이버 광고 계정을 일괄 동기화합니다.
