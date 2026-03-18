@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Plus, FileText, Send, Clock, Eye, Download, Calendar, Users, CheckCircle2, XCircle, Settings, X } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { downloadPdf } from "@/utils/export";
-import { useReports, useReportTemplates, useAccounts } from "@/hooks/useApi";
+import { useReports, useReportTemplates, useAccounts, useDashboard } from "@/hooks/useApi";
 
 type ViewTab = "templates" | "history" | "schedule";
 
@@ -40,7 +40,9 @@ export default function ReportsPage() {
   );
   const { addToast } = useToast();
   const { data: accountsData } = useAccounts(1, 100);
+  const { data: dashboardData } = useDashboard();
   const accountNames = (accountsData ?? []).map((a: any) => a.customerName || a.name).filter(Boolean);
+  const kpiDataList = dashboardData?.kpis || [];
 
   const toggleKpi = (key: string) => {
     setKpiConfig((prev) => prev.map((k) => k.key === key ? { ...k, enabled: !k.enabled } : k));
@@ -157,10 +159,20 @@ export default function ReportsPage() {
                   <button className="btn btn-primary" onClick={() => addToast("success", "리포트 생성 완료", "리포트가 성공적으로 생성되었습니다.")}><Send size={14} /> 리포트 생성</button>
                     <button className="btn btn-secondary" onClick={() => {
                       const templateName = templates.find((t) => t.id === selectedTemplate)?.name || "리포트";
-                      const activeKpis = kpiItems.filter((k) => kpiToggles[k.key]).map((k) => k.label);
+                      const activeKpis = kpiItems.filter((k) => kpiToggles[k.key]);
+                      const kpiRows = activeKpis.map((kpi) => {
+                        // 실제 대시보드 KPI 데이터와 연결 (key 기반)
+                        const matched = kpiDataList.find((d: any) => d.id === kpi.key);
+                        return [
+                          kpi.label,
+                          matched ? matched.value : "-",
+                          matched ? matched.change : "-"
+                        ];
+                      });
+
                       downloadPdf(`리포트_${templateName}`, `${templateName} - Agency OS`, [
-                        ["KPI", "값", "변화"],
-                        ...(activeKpis.map((kpi) => [kpi, "-", "-"]) as string[][])
+                        ["KPI", "값", "전주 대비 변동"],
+                        ...(kpiRows as string[][])
                       ]);
                       addToast("success", "PDF 다운로드", "리포트 PDF가 생성되었습니다.");
                     }}><Download size={14} /> PDF</button>

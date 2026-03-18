@@ -55,6 +55,28 @@ interface KeywordTableProps {
 }
 
 // ── 헤더 행 (공통) ────────────────────────────────────────────────
+function TableColgroup({ visibleCols }: { visibleCols: Set<string> }) {
+  return (
+    <colgroup>
+      <col style={{ width: 36, minWidth: 36 }} />
+      {visibleCols.has("text") && <col style={{ width: 240, minWidth: 240 }} />}
+      {visibleCols.has("account") && <col style={{ width: 100, minWidth: 100 }} />}
+      {visibleCols.has("campaign") && <col style={{ width: 120, minWidth: 120 }} />}
+      {visibleCols.has("group") && <col style={{ width: 120, minWidth: 120 }} />}
+      {visibleCols.has("bid") && <col style={{ width: 90, minWidth: 90 }} />}
+      {visibleCols.has("rank") && <col style={{ width: 60, minWidth: 60 }} />}
+      {visibleCols.has("strategy") && <col style={{ width: 80, minWidth: 80 }} />}
+      {visibleCols.has("qi") && <col style={{ width: 60, minWidth: 60 }} />}
+      {visibleCols.has("impressions") && <col style={{ width: 70, minWidth: 70 }} />}
+      {visibleCols.has("clicks") && <col style={{ width: 70, minWidth: 70 }} />}
+      {visibleCols.has("ctr") && <col style={{ width: 70, minWidth: 70 }} />}
+      {visibleCols.has("cpc") && <col style={{ width: 70, minWidth: 70 }} />}
+      {visibleCols.has("conversions") && <col style={{ width: 70, minWidth: 70 }} />}
+      {visibleCols.has("cost") && <col style={{ width: 90, minWidth: 90 }} />}
+    </colgroup>
+  );
+}
+
 function TableHeader({
   keywords, selectedKws, visibleCols, sortKey, sortDir,
   onToggleAll, onSort,
@@ -189,7 +211,8 @@ function VirtualKeywordTable(props: KeywordTableProps) {
   return (
     <div className="virtual-table-container">
       <div className="virtual-table-header">
-        <table>
+        <table style={{ tableLayout: "fixed" }}>
+          <TableColgroup visibleCols={props.visibleCols} />
           <thead>
             <TableHeader
               keywords={props.keywords}
@@ -205,7 +228,8 @@ function VirtualKeywordTable(props: KeywordTableProps) {
       </div>
       <div ref={tableRef} className="virtual-table-body" style={{ maxHeight: 600, overflowY: "auto" }}>
         <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
-          <table style={{ position: "absolute", top: 0, left: 0, width: "100%" }}>
+          <table style={{ position: "absolute", top: 0, left: 0, width: "100%", tableLayout: "fixed" }}>
+            <TableColgroup visibleCols={props.visibleCols} />
             <tbody>
               {virtualItems.map((vRow) => {
                 const kw = props.keywords[vRow.index];
@@ -241,7 +265,8 @@ export default function KeywordTable(props: KeywordTableProps) {
   if (!useVirtual) {
     return (
       <div className="table-wrapper">
-        <table>
+        <table style={{ tableLayout: "fixed" }}>
+          <TableColgroup visibleCols={props.visibleCols} />
           <thead>
             <TableHeader
               keywords={props.keywords}

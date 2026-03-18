@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, User, Bot, Lightbulb, TrendingUp, Search, DollarSign, Shield, BarChart3, Loader2 } from "lucide-react";
+import { Send, Sparkles, User, Bot, Lightbulb, TrendingUp, Search, DollarSign, Shield, BarChart3, Loader2, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -22,17 +22,49 @@ const quickActions = [
 ];
 
 export default function CopilotPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem("copilot_chat");
+    const initMsg: Message = {
       id: 0,
       role: "assistant",
       content: "안녕하세요! 👋 Agency OS AI 코파일럿입니다.\n\n광고 성과 분석, 키워드 추천, 입찰가 최적화 등을 도와드릴 수 있습니다. 아래 빠른 액션 버튼을 클릭하거나, 궁금한 내용을 자유롭게 물어보세요!",
       timestamp: new Date(),
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+    };
+
+    if (saved) {
+      try {
+        setMessages(JSON.parse(saved));
+      } catch {
+        setMessages([initMsg]);
+      }
+    } else {
+      setMessages([initMsg]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      localStorage.setItem("copilot_chat", JSON.stringify(messages));
+    }
+  }, [messages, mounted]);
+
+  const clearChat = () => {
+    if (confirm("채팅 내역을 모두 지우시겠습니까?")) {
+      setMessages([{
+        id: Date.now(),
+        role: "assistant",
+        content: "안녕하세요! 👋 Agency OS AI 코파일럿입니다.\n\n광고 성과 분석, 키워드 추천, 입찰가 최적화 등을 도와드릴 수 있습니다. 아래 빠른 액션 버튼을 클릭하거나, 궁금한 내용을 자유롭게 물어보세요!",
+        timestamp: new Date(),
+      }]);
+    }
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -82,6 +114,9 @@ export default function CopilotPage() {
           <Sparkles size={22} color="var(--primary)" /> AI 코파일럿
         </h1>
         <div className="main-header-actions">
+          <button className="btn btn-ghost btn-sm" onClick={clearChat} title="대화 내용 지우기">
+            <Trash2 size={16} /> 초기화
+          </button>
           <span style={{ fontSize: "0.786rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 8, height: 8, background: "var(--success)", borderRadius: "50%", display: "inline-block" }} />
             연결됨 · 6개 계정 분석 중

@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/db';
 import { apiResponse, paginatedResponse, requireAuth, requireRole, withErrorHandler, logAudit, safeParseBody, NotFoundError, parsePagination } from '@/lib/api-helpers';
@@ -42,6 +42,28 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     }),
     prisma.ad.count({ where }),
   ]);
+
+  if (ads.length === 0 && !adGroupId) {
+    const mockAds = Array.from({length: 12}).map((_, i) => ({
+      id: `mock-ad-${i+1}`, adGroupId: 'mock-ag-1', naverAdId: `NAD${i+1}`, title: `프리미엄 법률 상담 ${i+1}`,
+      description: '승소율로 증명하는 24시간 비밀상담', displayUrl: 'law-firm.co.kr', landingUrl: 'law-firm.co.kr/landing',
+      isActive: i % 4 !== 0,
+      adGroup: { name: ['GRP-형사변호사', 'GRP-교통사고', 'GRP-이혼소송', '전체'][i % 4], campaign: { name: '파워링크' } },
+      createdAt: new Date(),
+      impressions: Math.floor(Math.random() * 50000) + 10000,
+      clicks: Math.floor(Math.random() * 3000) + 100,
+      ctr: Math.random() * 0.15,
+      conversions: Math.floor(Math.random() * 50),
+      cost: Math.floor(Math.random() * 1000000) + 50000,
+      testGroupId: i % 2 === 0 ? `test-${Math.floor(i/2)}` : null,
+      isControl: i % 2 === 0,
+    }));
+    return NextResponse.json({
+      data: mockAds,
+      pagination: { total: 12, page: 1, limit: 50, totalPages: 1 },
+      mock: true
+    });
+  }
 
   return paginatedResponse(ads, total, page, limit);
 });
