@@ -46,13 +46,22 @@ function CampaignsContent() {
   const { data: apiCampaigns } = useCampaigns();
   const { data: apiAdGroups } = useAdGroups();
 
+  // 네이버 API status → 프론트엔드 status 매핑
+  const mapStatus = (s: string) => {
+    const lower = (s ?? '').toLowerCase();
+    if (lower === 'eligible' || lower === 'active' || lower === 'enable') return 'active';
+    if (lower === 'paused' || lower === 'pause') return 'paused';
+    if (lower === 'suspended' || lower === 'ended' || lower === 'del' || lower === 'off') return 'ended';
+    return lower || 'active';
+  };
+
   useEffect(() => {
     if (apiCampaigns !== undefined) {
       setCampaigns(apiCampaigns.map((c: any, i: number) => ({
         id: c.id ?? i + 1,
         name: c.name ?? '',
         account: c.naverAccount?.customerName ?? '',
-        status: c.status?.toLowerCase() ?? 'active',
+        status: mapStatus(c.status),
         type: c.campaignType ?? 'WEB_SITE',
         budget: (c.dailyBudget ?? 0).toLocaleString(),
         spend: `₩${(Number(c.totalCost ?? 0)).toLocaleString()}`,
@@ -91,7 +100,7 @@ function CampaignsContent() {
       id: ag.id ?? i + 1,
       name: ag.name ?? '',
       campaign: ag.campaign?.name ?? '',
-      status: ag.status?.toLowerCase() ?? 'active',
+      status: ag.isActive === false ? 'paused' : 'active',
       bid: ag.defaultBid ? `₩${Number(ag.defaultBid).toLocaleString()}` : '-',
       target: ag.targetPlatform ?? 'PC+Mobile',
       keywords: ag._count?.keywords ?? 0,
@@ -277,12 +286,13 @@ function CampaignsContent() {
                     </table>
                   ) : (
                     <table>
-                      <thead><tr><th style={{ width: 32 }}><input type="checkbox" /></th><th>광고그룹</th><th>상태</th><th>입찰가</th><th>타겟</th><th>키워드</th><th>클릭</th><th>비용</th><th></th></tr></thead>
+                      <thead><tr><th style={{ width: 32 }}><input type="checkbox" /></th><th>광고그룹</th><th>캠페인</th><th>상태</th><th>입찰가</th><th>타겟</th><th>키워드</th><th>클릭</th><th>비용</th><th></th></tr></thead>
                       <tbody>
                         {filteredAdGroups.map((ag) => (
                           <tr key={ag.id} style={{ background: selectedRows.has(ag.id) ? "var(--primary-light)" : drawerAdGroup === ag.id ? "var(--surface-hover)" : undefined, cursor: "pointer" }} onClick={() => setDrawerAdGroup(ag.id)}>
                             <td><input type="checkbox" checked={selectedRows.has(ag.id)} onChange={(e) => { e.stopPropagation(); toggleRow(ag.id); }} /></td>
                             <td style={{ fontWeight: 600 }}>{ag.name}</td>
+                            <td style={{ color: "var(--text-secondary)", fontSize: "0.857rem" }}>{ag.campaign || '-'}</td>
                             <td>{ag.status === "active" ? <span className="badge badge-success"><Play size={10} /> 활성</span> : <span className="badge badge-warning"><Pause size={10} /> 일시정지</span>}</td>
                             <td style={{ fontWeight: 600 }}>{ag.bid}</td>
                             <td><span className="badge badge-info">{ag.target}</span></td>

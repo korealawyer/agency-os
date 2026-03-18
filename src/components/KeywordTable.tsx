@@ -19,6 +19,7 @@ export interface KeywordRow {
   id: number;
   text: string;
   account: string;
+  campaign: string;
   group: string;
   bid: number;
   rank: number;
@@ -65,22 +66,23 @@ function TableHeader({
 
   return (
     <tr>
-      <th style={{ width: 32 }}>
+      <th style={{ width: 36, minWidth: 36 }}>
         <input type="checkbox" checked={selectedKws.size === keywords.length && keywords.length > 0} onChange={onToggleAll} />
       </th>
-      {visibleCols.has("text") && <th className={`sortable ${sortKey === "text" ? "sort-active" : ""}`} onClick={() => onSort("text")}>키워드 <span className="sort-icon"><SortIcon col="text" /></span></th>}
-      {visibleCols.has("account") && <th>계정</th>}
-      {visibleCols.has("group") && <th>광고그룹</th>}
-      {visibleCols.has("bid") && <th className={`sortable ${sortKey === "bid" ? "sort-active" : ""}`} onClick={() => onSort("bid")}>입찰가 <span className="sort-icon"><SortIcon col="bid" /></span></th>}
-      {visibleCols.has("rank") && <th className={`sortable ${sortKey === "rank" ? "sort-active" : ""}`} onClick={() => onSort("rank")}>순위 <span className="sort-icon"><SortIcon col="rank" /></span></th>}
-      {visibleCols.has("strategy") && <th>전략</th>}
-      {visibleCols.has("qi") && <th className={`sortable ${sortKey === "qi" ? "sort-active" : ""}`} onClick={() => onSort("qi")}>품질 <span className="sort-icon"><SortIcon col="qi" /></span></th>}
-      {visibleCols.has("impressions") && <th className={`sortable ${sortKey === "impressions" ? "sort-active" : ""}`} onClick={() => onSort("impressions")}>노출 <span className="sort-icon"><SortIcon col="impressions" /></span></th>}
-      {visibleCols.has("clicks") && <th className={`sortable ${sortKey === "clicks" ? "sort-active" : ""}`} onClick={() => onSort("clicks")}>클릭 <span className="sort-icon"><SortIcon col="clicks" /></span></th>}
-      {visibleCols.has("ctr") && <th className={`sortable ${sortKey === "ctr" ? "sort-active" : ""}`} onClick={() => onSort("ctr")}>CTR <span className="sort-icon"><SortIcon col="ctr" /></span></th>}
-      {visibleCols.has("cpc") && <th className={`sortable ${sortKey === "cpc" ? "sort-active" : ""}`} onClick={() => onSort("cpc")}>CPC <span className="sort-icon"><SortIcon col="cpc" /></span></th>}
-      {visibleCols.has("conversions") && <th className={`sortable ${sortKey === "conversions" ? "sort-active" : ""}`} onClick={() => onSort("conversions")}>전환 <span className="sort-icon"><SortIcon col="conversions" /></span></th>}
-      {visibleCols.has("cost") && <th className={`sortable ${sortKey === "cost" ? "sort-active" : ""}`} onClick={() => onSort("cost")}>비용 <span className="sort-icon"><SortIcon col="cost" /></span></th>}
+      {visibleCols.has("text") && <th style={{ minWidth: 160 }} className={`sortable ${sortKey === "text" ? "sort-active" : ""}`} onClick={() => onSort("text")}>키워드 <span className="sort-icon"><SortIcon col="text" /></span></th>}
+      {visibleCols.has("account") && <th style={{ minWidth: 100 }}>계정</th>}
+      {visibleCols.has("campaign") && <th style={{ minWidth: 120 }}>캠페인</th>}
+      {visibleCols.has("group") && <th style={{ minWidth: 120 }}>광고그룹</th>}
+      {visibleCols.has("bid") && <th style={{ minWidth: 80 }} className={`sortable ${sortKey === "bid" ? "sort-active" : ""}`} onClick={() => onSort("bid")}>입찰가 <span className="sort-icon"><SortIcon col="bid" /></span></th>}
+      {visibleCols.has("rank") && <th style={{ minWidth: 60 }} className={`sortable ${sortKey === "rank" ? "sort-active" : ""}`} onClick={() => onSort("rank")}>순위 <span className="sort-icon"><SortIcon col="rank" /></span></th>}
+      {visibleCols.has("strategy") && <th style={{ minWidth: 80 }}>전략</th>}
+      {visibleCols.has("qi") && <th style={{ minWidth: 60 }} className={`sortable ${sortKey === "qi" ? "sort-active" : ""}`} onClick={() => onSort("qi")}>품질 <span className="sort-icon"><SortIcon col="qi" /></span></th>}
+      {visibleCols.has("impressions") && <th style={{ minWidth: 70 }} className={`sortable ${sortKey === "impressions" ? "sort-active" : ""}`} onClick={() => onSort("impressions")}>노출 <span className="sort-icon"><SortIcon col="impressions" /></span></th>}
+      {visibleCols.has("clicks") && <th style={{ minWidth: 60 }} className={`sortable ${sortKey === "clicks" ? "sort-active" : ""}`} onClick={() => onSort("clicks")}>클릭 <span className="sort-icon"><SortIcon col="clicks" /></span></th>}
+      {visibleCols.has("ctr") && <th style={{ minWidth: 60 }} className={`sortable ${sortKey === "ctr" ? "sort-active" : ""}`} onClick={() => onSort("ctr")}>CTR <span className="sort-icon"><SortIcon col="ctr" /></span></th>}
+      {visibleCols.has("cpc") && <th style={{ minWidth: 70 }} className={`sortable ${sortKey === "cpc" ? "sort-active" : ""}`} onClick={() => onSort("cpc")}>CPC <span className="sort-icon"><SortIcon col="cpc" /></span></th>}
+      {visibleCols.has("conversions") && <th style={{ minWidth: 60 }} className={`sortable ${sortKey === "conversions" ? "sort-active" : ""}`} onClick={() => onSort("conversions")}>전환 <span className="sort-icon"><SortIcon col="conversions" /></span></th>}
+      {visibleCols.has("cost") && <th style={{ minWidth: 80 }} className={`sortable ${sortKey === "cost" ? "sort-active" : ""}`} onClick={() => onSort("cost")}>비용 <span className="sort-icon"><SortIcon col="cost" /></span></th>}
     </tr>
   );
 }
@@ -110,6 +112,7 @@ function TableRow({
         </td>
       )}
       {visibleCols.has("account") && <td style={{ fontSize: "0.857rem", color: "var(--text-secondary)" }}>{kw.account}</td>}
+      {visibleCols.has("campaign") && <td style={{ fontSize: "0.857rem", color: "var(--text-secondary)" }}>{kw.campaign}</td>}
       {visibleCols.has("group") && <td style={{ fontSize: "0.786rem", color: "var(--text-muted)" }}>{kw.group}</td>}
       {visibleCols.has("bid") && (
         <td style={{ fontWeight: 600, cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); onBidClick(kw.id, kw.bid); }}>

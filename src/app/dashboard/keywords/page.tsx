@@ -13,7 +13,7 @@ import KeywordTable, { type SortKey, type KeywordRow } from "@/components/Keywor
 
 type ViewTab = "keywords" | "rank" | "fraud";
 
-type KeywordItem = { id: number; text: string; group: string; account: string; bid: number; rank: number; strategy: string; qi: number; impressions: number; clicks: number; ctr: number; cpc: number; conversions: number; cost: number; trend: string };
+type KeywordItem = { id: number; text: string; group: string; campaign: string; account: string; bid: number; rank: number; strategy: string; qi: number; impressions: number; clicks: number; ctr: number; cpc: number; conversions: number; cost: number; trend: string };
 
 const aiRecommendedKeywords = [
   { text: "교통사고변호사", searchVol: 8200, competition: "낮음", estCpc: 680, estConv: 6 },
@@ -40,15 +40,16 @@ type SortDir = "asc" | "desc";
 
 const allColumns = [
   { key: "text", label: "키워드", default: true },
-  { key: "account", label: "계정", default: false },
-  { key: "group", label: "광고그룹", default: false },
+  { key: "account", label: "계정", default: true },
+  { key: "campaign", label: "캠페인", default: true },
+  { key: "group", label: "광고그룹", default: true },
   { key: "bid", label: "입찰가", default: true },
   { key: "rank", label: "순위", default: true },
   { key: "strategy", label: "전략", default: true },
   { key: "qi", label: "품질", default: false },
   { key: "impressions", label: "노출", default: false },
   { key: "clicks", label: "클릭", default: false },
-  { key: "ctr", label: "CTR", default: true },
+  { key: "ctr", label: "CTR", default: false },
   { key: "cpc", label: "CPC", default: false },
   { key: "conversions", label: "전환", default: true },
   { key: "cost", label: "비용", default: true },
@@ -83,8 +84,9 @@ export default function KeywordsPage() {
       setKeywords(apiKeywords.map((k: any, i: number) => ({
         id: k.id ?? i + 1,
         text: k.keywordText ?? '',
-        group: k.adGroupId ?? '',
-        account: k.accountName ?? '',
+        group: k.adGroup?.name ?? '',
+        campaign: k.adGroup?.campaign?.name ?? '',
+        account: k.adGroup?.campaign?.naverAccount?.customerName ?? '',
         bid: Number(k.currentBid ?? 0),
         rank: k.targetRank ?? 0,
         strategy: k.bidStrategy ?? 'manual',
@@ -626,7 +628,7 @@ export default function KeywordsPage() {
                           <button className="btn btn-sm btn-primary" onClick={() => {
                             const newId = Math.max(...keywords.map((k) => k.id)) + 1;
                             setKeywords((prev) => [...prev, {
-                              id: newId, text: rk.text, group: "AI_추천", account: "A 법률사무소",
+                              id: newId, text: rk.text, group: "AI_추천", campaign: "", account: "",
                               bid: rk.estCpc, rank: 0, strategy: "target_cpc", qi: 7,
                               impressions: 0, clicks: 0, ctr: 0, cpc: rk.estCpc,
                               conversions: 0, cost: 0, trend: "up",

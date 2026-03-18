@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Zap, Shield, Clock, Target, DollarSign, TrendingUp, BarChart3, AlertTriangle, CheckCircle2, X } from "lucide-react";
 import { useToast } from "@/components/Toast";
-import { useAiActions } from "@/hooks/useApi";
+import { useAccounts } from "@/hooks/useApi";
 
 type ConfirmMode = "semi" | "full" | "manual";
 
@@ -27,6 +27,9 @@ export default function AutomationPage() {
   });
   const [selectedStrategy, setSelectedStrategy] = useState("target_rank");
   const { addToast } = useToast();
+  const { data: accountsData } = useAccounts(1, 100);
+  const accountNames = (accountsData ?? []).map((a: any) => a.customerName || a.name).filter(Boolean);
+  const displayAccounts = accountNames.length > 0 ? accountNames : ['계정을 동기화해주세요'];
 
   const handleModeChange = (mode: ConfirmMode) => {
     if (mode === "full") {
@@ -189,7 +192,7 @@ export default function AutomationPage() {
           </div>
           <div className="card-body">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-              {["A 법률사무소", "B 성형외과", "C 치과의원", "D 부동산", "E 학원", "F 인테리어"].map((acc) => (
+              {displayAccounts.map((acc: string) => (
                 <label key={acc} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: "var(--radius-md)", border: "1px solid var(--border)", cursor: "pointer", fontSize: "0.857rem" }}>
                   <input type="checkbox" defaultChecked /> {acc}
                 </label>

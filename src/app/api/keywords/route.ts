@@ -40,6 +40,18 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
         conversions: true, conversionValue: true, cost: true, roas: true,
         isAutoManaged: true, version: true,
         lastSyncAt: true, createdAt: true,
+        adGroup: {
+          select: {
+            id: true,
+            name: true,
+            campaign: {
+              select: {
+                name: true,
+                naverAccount: { select: { customerName: true } },
+              },
+            },
+          },
+        },
       },
     }),
     prisma.keyword.count({ where }),

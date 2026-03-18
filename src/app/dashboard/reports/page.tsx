@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Plus, FileText, Send, Clock, Eye, Download, Calendar, Users, CheckCircle2, XCircle, Settings, X } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { downloadPdf } from "@/utils/export";
-import { useReports, useReportTemplates } from "@/hooks/useApi";
+import { useReports, useReportTemplates, useAccounts } from "@/hooks/useApi";
 
 type ViewTab = "templates" | "history" | "schedule";
 
@@ -39,6 +39,8 @@ export default function ReportsPage() {
     Object.fromEntries(defaultTemplates.map((t) => [t.id, true]))
   );
   const { addToast } = useToast();
+  const { data: accountsData } = useAccounts(1, 100);
+  const accountNames = (accountsData ?? []).map((a: any) => a.customerName || a.name).filter(Boolean);
 
   const toggleKpi = (key: string) => {
     setKpiConfig((prev) => prev.map((k) => k.key === key ? { ...k, enabled: !k.enabled } : k));
@@ -125,7 +127,7 @@ export default function ReportsPage() {
                   <div className="form-group">
                     <label className="form-label">대상 계정 선택</label>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                      {["A 법률사무소", "B 성형외과", "C 치과의원", "D 부동산", "E 학원", "F 인테리어"].map((acc) => (
+                      {(accountNames.length > 0 ? accountNames : ["연동된 계정 없음"]).map((acc: string) => (
                         <label key={acc} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.857rem", cursor: "pointer" }}>
                           <input type="checkbox" defaultChecked /> {acc}
                         </label>
