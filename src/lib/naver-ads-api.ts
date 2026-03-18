@@ -87,6 +87,11 @@ export class NaverAdsClient {
     return this.requestWithRetry<any[]>('GET', `/ncc/keywords?nccAdgroupId=${adGroupId}`);
   }
 
+  // ── 소재(광고) 조회 ──
+  async getAds(adGroupId: string) {
+    return this.requestWithRetry<any[]>('GET', `/ncc/ads?nccAdgroupId=${adGroupId}`);
+  }
+
   // ── 키워드별 통계 조회 ──
   async getKeywordStats(keywordIds: string[], startDate: string, endDate: string) {
     return this.requestWithRetry<any[]>('POST', '/stats', {

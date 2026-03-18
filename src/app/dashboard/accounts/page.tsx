@@ -120,51 +120,68 @@ export default function AccountsPage() {
 
   const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set());
   const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [syncProgress, setSyncProgress] = useState('');
 
+  /** Phase1 → Phase2 단계별 동기화 */
   const handleSyncAccount = async (id: number) => {
     const acc = accounts.find((a) => a.id === id);
     if (!acc) return;
     setCtxMenu(null);
     setSyncingIds((prev) => new Set(prev).add(id));
+
     try {
+      // ── Phase 1: 캠페인 + 광고그룹 구조 동기화 ──
+      setSyncProgress(`${acc.name}: 캠페인/광고그룹 동기화 중...`);
       const res = await fetch(`/api/accounts/${id}/sync`, { method: "POST" });
       const data = await res.json();
-      if (res.ok && data.success) {
-        setAccounts((prev) => prev.map((a) => a.id === id ? { ...a, lastSync: "방금 전", status: "connected" } : a));
-        addToast("success", "동기화 완료", `'${acc.name}' — 캠페인 ${data.synced?.campaigns ?? 0}개, 광고그룹 ${data.synced?.adGroups ?? 0}개, 키워드 ${data.synced?.keywords ?? 0}개`);
-        invalidateAll('/api/accounts');
-        invalidateAll('/api/campaigns');
-        invalidateAll('/api/keywords');
-      } else {
+
+      if (!res.ok || !data.success) {
         setAccounts((prev) => prev.map((a) => a.id === id ? { ...a, status: "error" } : a));
-        addToast("error", "동기화 실패", data.error ?? "알 수 없는 오류가 발생했습니다.");
+        addToast("error", "Phase 1 실패", data.error ?? "구조 동기화 중 오류");
+        return;
       }
+
+      setAccounts((prev) => prev.map((a) => a.id === id ? { ...a, status: "connected", lastSync: "동기화 중..." } : a));
+      addToast("success", "Phase 1 완료", `캠페인 ${data.synced.campaigns}개, 광고그룹 ${data.synced.adGroups}개`);
+
+      // ── Phase 2: 광고그룹별 소재 + 키워드 순차 동기화 ──
+      const adGroupIds: string[] = data.pendingAdGroupIds ?? [];
+      let totalAds = 0, totalKeywords = 0;
+
+      for (let i = 0; i < adGroupIds.length; i++) {
+        setSyncProgress(`${acc.name}: 광고그룹 ${i + 1}/${adGroupIds.length} 동기화 중...`);
+        try {
+          const r2 = await fetch(`/api/accounts/${id}/sync-adgroup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ adGroupId: adGroupIds[i] }),
+          });
+          const d2 = await r2.json();
+          if (r2.ok && d2.success) {
+            totalAds += d2.synced?.ads ?? 0;
+            totalKeywords += d2.synced?.keywords ?? 0;
+          }
+        } catch { /* 개별 실패 스킵 */ }
+      }
+
+      addToast("success", "동기화 완료", `'${acc.name}' — 캠페인 ${data.synced.campaigns}개, 광고그룹 ${data.synced.adGroups}개, 소재 ${totalAds}개, 키워드 ${totalKeywords}개`);
+      setAccounts((prev) => prev.map((a) => a.id === id ? { ...a, lastSync: "방금 전", status: "connected" } : a));
+      invalidateAll('/api/accounts');
+      invalidateAll('/api/campaigns');
+      invalidateAll('/api/keywords');
     } catch {
       addToast("error", "동기화 실패", "네트워크 오류가 발생했습니다.");
     } finally {
       setSyncingIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
+      setSyncProgress('');
     }
   };
 
   const handleSyncAll = async () => {
     setIsSyncingAll(true);
-    addToast("info", "전체 동기화 시작", "모든 계정의 캠페인/광고그룹/키워드를 가져오고 있습니다...");
-    let totalCampaigns = 0, totalAdGroups = 0, totalKeywords = 0;
     for (const acc of accounts) {
-      try {
-        const res = await fetch(`/api/accounts/${acc.id}/sync`, { method: "POST" });
-        const data = await res.json();
-        if (res.ok && data.success) {
-          totalCampaigns += data.synced?.campaigns ?? 0;
-          totalAdGroups += data.synced?.adGroups ?? 0;
-          totalKeywords += data.synced?.keywords ?? 0;
-        }
-      } catch { /* skip failed accounts */ }
+      await handleSyncAccount(acc.id);
     }
-    addToast("success", "전체 동기화 완료", `캠페인 ${totalCampaigns}개, 광고그룹 ${totalAdGroups}개, 키워드 ${totalKeywords}개 동기화됨`);
-    invalidateAll('/api/accounts');
-    invalidateAll('/api/campaigns');
-    invalidateAll('/api/keywords');
     setIsSyncingAll(false);
   };
 
@@ -202,6 +219,14 @@ export default function AccountsPage() {
           </div>
           <button className="btn btn-secondary" onClick={handleSyncAll} disabled={isSyncingAll}><RefreshCw size={16} className={isSyncingAll ? 'spin' : ''} /> {isSyncingAll ? '동기화 중...' : '전체 동기화'}</button>
         </div>
+
+        {/* 동기화 진행률 표시 */}
+        {syncProgress && (
+          <div style={{ padding: "10px 16px", background: "var(--primary-light)", border: "1px solid var(--primary)", borderRadius: "var(--radius-lg)", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+            <RefreshCw size={16} className="spin" style={{ color: "var(--primary)" }} />
+            <span style={{ fontSize: "0.857rem", fontWeight: 600, color: "var(--primary)" }}>{syncProgress}</span>
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 24 }}>
           {/* Account Table */}
