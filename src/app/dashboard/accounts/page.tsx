@@ -34,8 +34,9 @@ export default function AccountsPage() {
     if (apiAccounts !== undefined) {
       setAccounts(apiAccounts.map((a: any) => ({
         id: a.id ?? 0, name: a.customerName ?? '', customerId: a.customerId ?? '',
-        status: a.isActive ? 'connected' : 'error', lastSync: a.lastSyncAt ? new Date(a.lastSyncAt).toLocaleString('ko-KR') : '-',
-        spend: `₩${(Number(a.totalSpend ?? 0)).toLocaleString()}`, dailyBudget: `₩${(Number(a.dailyBudget ?? 0)).toLocaleString()}`,
+        status: a.connectionStatus ?? (a.isActive ? 'connected' : 'pending'),
+        lastSync: a.lastSyncAt ? new Date(a.lastSyncAt).toLocaleString('ko-KR') : '-',
+        spend: `₩${(Number(a.monthlySpend ?? 0)).toLocaleString()}`, dailyBudget: `₩${(Number(a.dailyBudget ?? 0)).toLocaleString()}`,
         commissionRate: `${a.commissionRate ?? 15}%`, campaigns: a._count?.campaigns ?? 0, keywords: a._count?.keywords ?? 0,
         syncHistory: ['API 데이터 로드 완료'],
       })));
@@ -118,6 +119,7 @@ export default function AccountsPage() {
   };
 
   const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set());
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
 
   const handleSyncAccount = async (id: number) => {
     const acc = accounts.find((a) => a.id === id);
@@ -128,9 +130,11 @@ export default function AccountsPage() {
       const res = await fetch(`/api/accounts/${id}/sync`, { method: "POST" });
       const data = await res.json();
       if (res.ok && data.success) {
-        // 마지막 동기화 시간 업데이트
         setAccounts((prev) => prev.map((a) => a.id === id ? { ...a, lastSync: "방금 전", status: "connected" } : a));
-        addToast("success", "동기화 완료", `'${acc.name}' — 캠페인 ${data.synced?.campaigns ?? 0}개, 키워드 ${data.synced?.keywords ?? 0}개 동기화됨`);
+        addToast("success", "동기화 완료", `'${acc.name}' — 캠페인 ${data.synced?.campaigns ?? 0}개, 광고그룹 ${data.synced?.adGroups ?? 0}개, 키워드 ${data.synced?.keywords ?? 0}개`);
+        invalidateAll('/api/accounts');
+        invalidateAll('/api/campaigns');
+        invalidateAll('/api/keywords');
       } else {
         setAccounts((prev) => prev.map((a) => a.id === id ? { ...a, status: "error" } : a));
         addToast("error", "동기화 실패", data.error ?? "알 수 없는 오류가 발생했습니다.");
@@ -140,6 +144,28 @@ export default function AccountsPage() {
     } finally {
       setSyncingIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
     }
+  };
+
+  const handleSyncAll = async () => {
+    setIsSyncingAll(true);
+    addToast("info", "전체 동기화 시작", "모든 계정의 캠페인/광고그룹/키워드를 가져오고 있습니다...");
+    let totalCampaigns = 0, totalAdGroups = 0, totalKeywords = 0;
+    for (const acc of accounts) {
+      try {
+        const res = await fetch(`/api/accounts/${acc.id}/sync`, { method: "POST" });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          totalCampaigns += data.synced?.campaigns ?? 0;
+          totalAdGroups += data.synced?.adGroups ?? 0;
+          totalKeywords += data.synced?.keywords ?? 0;
+        }
+      } catch { /* skip failed accounts */ }
+    }
+    addToast("success", "전체 동기화 완료", `캠페인 ${totalCampaigns}개, 광고그룹 ${totalAdGroups}개, 키워드 ${totalKeywords}개 동기화됨`);
+    invalidateAll('/api/accounts');
+    invalidateAll('/api/campaigns');
+    invalidateAll('/api/keywords');
+    setIsSyncingAll(false);
   };
 
   const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,7 +200,7 @@ export default function AccountsPage() {
             <Search size={18} color="var(--text-muted)" style={{ position: "absolute", left: 12, top: 10 }} />
             <input className="form-input" placeholder="계정 검색..." style={{ paddingLeft: 36 }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
-          <button className="btn btn-secondary" onClick={() => addToast("success", "전체 동기화 완료", `${accounts.length}개 계정 데이터가 동기화되었습니다.`)}><RefreshCw size={16} /> 전체 동기화</button>
+          <button className="btn btn-secondary" onClick={handleSyncAll} disabled={isSyncingAll}><RefreshCw size={16} className={isSyncingAll ? 'spin' : ''} /> {isSyncingAll ? '동기화 중...' : '전체 동기화'}</button>
         </div>
 
         <div style={{ display: "flex", gap: 24 }}>
