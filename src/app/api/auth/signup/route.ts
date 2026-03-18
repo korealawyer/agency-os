@@ -2,7 +2,8 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import prisma from '@/lib/db';
-import { apiResponse, withErrorHandler, logAudit } from '@/lib/api-helpers';
+import { apiResponse, apiError, withErrorHandler, logAudit } from '@/lib/api-helpers';
+import { authRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const signupSchema = z.object({
   email: z.string().email('유효한 이메일 주소를 입력해 주세요.'),
@@ -12,6 +13,13 @@ const signupSchema = z.object({
 });
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // ──── Rate Limiting (IP 기반) ────
+  const ip = getClientIp(req.headers);
+  const { success } = await authRateLimit.limit(ip);
+  if (!success) {
+    return apiError('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.', 429);
+  }
+
   const body = await req.json();
   const { email, password, name, organizationName } = signupSchema.parse(body);
 

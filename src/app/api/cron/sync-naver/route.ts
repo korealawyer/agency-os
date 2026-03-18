@@ -10,11 +10,14 @@ import prisma from '@/lib/db';
  * 보안: CRON_SECRET 헤더 검증
  */
 export const POST = async (req: NextRequest) => {
-  // Vercel cron 또는 서버 내부 호출 검증
+  // ──── Cron 인증 (Fail-Close) ────
   const authHeader = req.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret) {
+    return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 });
+  }
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

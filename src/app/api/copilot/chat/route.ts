@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/db';
-import { apiResponse, requireAuth, withErrorHandler, safeParseBody, logAudit } from '@/lib/api-helpers';
+import { apiResponse, apiError, requireAuth, withErrorHandler, safeParseBody, logAudit } from '@/lib/api-helpers';
+import { copilotRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(5000),
@@ -108,6 +109,13 @@ function getContextBasedResponse(message: string, context?: any): string {
 }
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
+  // ──── Rate Limiting ────
+  const ip = getClientIp(req.headers);
+  const { success } = await copilotRateLimit.limit(ip);
+  if (!success) {
+    return apiError('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.', 429);
+  }
+
   const user = await requireAuth(req);
   const body = await safeParseBody(req);
   const { message } = chatSchema.parse(body);
@@ -149,10 +157,10 @@ ${context.recentKeywords.map((k: any) => `- ${k.keywordText}: 입찰가 ₩${k.c
   if (process.env.GEMINI_API_KEY) {
     try {
       const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY! },
           body: JSON.stringify({
             system_instruction: { parts: [{ text: systemPrompt }] },
             contents: [{ role: 'user', parts: [{ text: message }] }],

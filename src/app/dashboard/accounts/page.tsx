@@ -5,14 +5,7 @@ import { Plus, Search, Wifi, WifiOff, AlertCircle, MoreVertical, Key, RefreshCw,
 import { useToast } from "@/components/Toast";
 import { useAccounts } from "@/hooks/useApi";
 
-const initialAccounts = [
-  { id: 1, name: "A 법률사무소", customerId: "ncc-1234567", status: "connected", lastSync: "2분 전", spend: "₩8,200,000", dailyBudget: "₩300,000", commissionRate: "15%", campaigns: 12, keywords: 245, syncHistory: ["03/12 10:00 동기화 완료", "03/12 09:00 동기화 완료", "03/11 18:00 동기화 완료"] },
-  { id: 2, name: "B 성형외과", customerId: "ncc-2345678", status: "connected", lastSync: "5분 전", spend: "₩12,500,000", dailyBudget: "₩500,000", commissionRate: "12%", campaigns: 18, keywords: 523, syncHistory: ["03/12 10:00 동기화 완료", "03/12 09:00 동기화 완료"] },
-  { id: 3, name: "C 치과의원", customerId: "ncc-3456789", status: "connected", lastSync: "3분 전", spend: "₩3,400,000", dailyBudget: "₩120,000", commissionRate: "18%", campaigns: 6, keywords: 87, syncHistory: ["03/12 10:00 동기화 완료"] },
-  { id: 4, name: "D 부동산", customerId: "ncc-4567890", status: "error", lastSync: "2시간 전", spend: "₩6,100,000", dailyBudget: "₩250,000", commissionRate: "15%", campaigns: 8, keywords: 312, syncHistory: ["03/12 08:00 동기화 실패 — API 인증 오류"] },
-  { id: 5, name: "E 학원", customerId: "ncc-5678901", status: "connected", lastSync: "1분 전", spend: "₩2,800,000", dailyBudget: "₩100,000", commissionRate: "20%", campaigns: 4, keywords: 156, syncHistory: ["03/12 10:00 동기화 완료"] },
-  { id: 6, name: "F 인테리어", customerId: "ncc-6789012", status: "connected", lastSync: "4분 전", spend: "₩5,700,000", dailyBudget: "₩200,000", commissionRate: "13%", campaigns: 9, keywords: 198, syncHistory: ["03/12 10:00 동기화 완료"] },
-];
+type AccountItem = { id: number; name: string; customerId: string; status: string; lastSync: string; spend: string; dailyBudget: string; commissionRate: string; campaigns: number; keywords: number; syncHistory: string[] };
 
 const statusMap: Record<string, { label: string; badge: string; icon: typeof Wifi }> = {
   connected: { label: "연결됨", badge: "badge-success", icon: Wifi },
@@ -26,16 +19,16 @@ export default function AccountsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDrawer, setSelectedDrawer] = useState<number | null>(null);
   const [apiTestStatus, setApiTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
-  const [accounts, setAccounts] = useState(initialAccounts);
+  const [accounts, setAccounts] = useState<AccountItem[]>([]);
   const [newAccountName, setNewAccountName] = useState("");
   const [newCustomerId, setNewCustomerId] = useState("");
   const { addToast } = useToast();
 
-  // ── API 데이터 페칭 (폴백 지원) ──
-  const { data: apiAccounts } = useAccounts();
+  // ── API 데이터 페칭 ──
+  const { data: apiAccounts, isLoading: apiLoading } = useAccounts();
 
   useEffect(() => {
-    if (apiAccounts?.length > 0) {
+    if (apiAccounts !== undefined) {
       setAccounts(apiAccounts.map((a: any) => ({
         id: a.id ?? 0, name: a.customerName ?? '', customerId: a.customerId ?? '',
         status: a.isActive ? 'connected' : 'error', lastSync: a.lastSyncAt ? new Date(a.lastSyncAt).toLocaleString('ko-KR') : '-',

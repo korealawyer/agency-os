@@ -8,19 +8,9 @@ import { useReports, useReportTemplates } from "@/hooks/useApi";
 
 type ViewTab = "templates" | "history" | "schedule";
 
-const defaultTemplates = [
-  { id: 1, name: "주간 성과 보고서", schedule: "weekly", accounts: 6, recipients: 6, lastSent: "2026-03-10", status: "active" },
-  { id: 2, name: "월간 종합 리포트", schedule: "monthly", accounts: 6, recipients: 3, lastSent: "2026-03-01", status: "active" },
-  { id: 3, name: "A 법률사무소 전용", schedule: "weekly", accounts: 1, recipients: 2, lastSent: "2026-03-10", status: "active" },
-];
+const defaultTemplates: { id: number; name: string; schedule: string; accounts: number; recipients: number; lastSent: string; status: string }[] = [];
 
-const recentReports = [
-  { id: 1, title: "A 법률사무소 — 주간 보고서 (3/4~3/10)", date: "2026-03-10 09:00", status: "sent", sentTo: 2, opened: 2 },
-  { id: 2, title: "B 성형외과 — 주간 보고서 (3/4~3/10)", date: "2026-03-10 09:00", status: "sent", sentTo: 1, opened: 1 },
-  { id: 3, title: "월간 종합 리포트 (2월)", date: "2026-03-01 09:00", status: "sent", sentTo: 3, opened: 2 },
-  { id: 4, title: "C 치과의원 — 주간 보고서 (3/4~3/10)", date: "2026-03-10 09:00", status: "failed", sentTo: 1, opened: 0 },
-  { id: 5, title: "D 부동산 — 주간 보고서 (3/4~3/10)", date: "2026-03-10 09:00", status: "sent", sentTo: 1, opened: 0 },
-];
+const recentReports: { id: number; title: string; date: string; status: string; sentTo: number; opened: number }[] = [];
 
 const kpiItems = [
   { key: "impressions", label: "노출수", enabled: true },

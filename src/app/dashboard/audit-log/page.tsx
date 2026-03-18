@@ -17,20 +17,7 @@ const actionTypes: Record<string, { label: string; icon: string; badge: string }
   member: { label: "멤버 관리", icon: "👥", badge: "badge-warning" },
 };
 
-const logs = [
-  { time: "03/12 10:05", user: "김대행", role: "Admin", type: "bid", target: "KW-001 형사변호사", detail: "입찰가 ₩1,200→₩1,150", ip: "203.xxx.xxx.12" },
-  { time: "03/12 09:30", user: "AI", role: "System", type: "ai", target: "15건 키워드", detail: "자동입찰 실행 완료", ip: "-" },
-  { time: "03/12 09:00", user: "박마케", role: "Editor", type: "login", target: "-", detail: "로그인", ip: "118.xxx.xxx.45" },
-  { time: "03/11 18:22", user: "김대행", role: "Admin", type: "report", target: "RPT-03 A법무법인", detail: "주간 리포트 발송", ip: "203.xxx.xxx.12" },
-  { time: "03/11 17:50", user: "김대행", role: "Admin", type: "setting", target: "알림 채널", detail: "Slack 웹훅 URL 변경", ip: "203.xxx.xxx.12" },
-  { time: "03/11 15:30", user: "AI", role: "System", type: "ai", target: "E학원 수학학원추천", detail: "시간대 입찰 강화 (15~18시 +20%)", ip: "-" },
-  { time: "03/11 15:00", user: "이수석", role: "Owner", type: "member", target: "박마케", detail: "역할 Viewer→Editor 변경", ip: "175.xxx.xxx.67" },
-  { time: "03/11 14:30", user: "AI", role: "System", type: "bid", target: "KW-005 임플란트가격", detail: "입찰가 ₩800→₩780", ip: "-" },
-  { time: "03/11 12:00", user: "김대행", role: "Admin", type: "setting", target: "컨펌 모드", detail: "Semi Auto→Full Auto 변경", ip: "203.xxx.xxx.12" },
-  { time: "03/11 09:05", user: "AI", role: "System", type: "ai", target: "12건 키워드", detail: "자동입찰 실행 완료", ip: "-" },
-  { time: "03/10 18:00", user: "김대행", role: "Admin", type: "report", target: "RPT-02 월간종합", detail: "월간 리포트 수동 발송", ip: "203.xxx.xxx.12" },
-  { time: "03/10 16:30", user: "박마케", role: "Editor", type: "bid", target: "KW-003 쌍꺼풀수술", detail: "입찰가 ₩2,500→₩2,400", ip: "118.xxx.xxx.45" },
-];
+const logs: { time: string; user: string; role: string; type: string; target: string; detail: string; ip: string }[] = [];
 
 const PAGE_SIZE = 8;
 

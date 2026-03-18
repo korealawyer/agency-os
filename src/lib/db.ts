@@ -12,8 +12,9 @@ function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/agency_os';
   const pool = new Pool({
     connectionString,
-    ssl: { rejectUnauthorized: false }, // Supabase SSL
-    max: 1, // Vercel 서버리스: 연결 최소화
+    ssl: { rejectUnauthorized: false }, // Supabase SSL — CA 인증서 적용 후 true로 전환 권장
+    max: 5, // 서버리스 인스턴스 내 동시 쿼리(Promise.all) 지원
+    idleTimeoutMillis: 20000,
     connectionTimeoutMillis: 10000,
   });
   const adapter = new PrismaPg(pool);

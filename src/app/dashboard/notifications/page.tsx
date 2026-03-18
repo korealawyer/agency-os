@@ -7,15 +7,7 @@ import { useNotifications } from "@/hooks/useApi";
 
 type NotificationType = "all" | "unread" | "urgent" | "bid_change" | "report_sent" | "system";
 
-const notifications = [
-  { id: 1, type: "bid_change" as const, priority: "high" as const, title: "A 법률사무소 '형사변호사' 입찰가 변경", message: "AI가 입찰가를 ₩1,200 → ₩1,050으로 조정했습니다. 순위 1위 유지 중.", time: "5분 전", read: false, icon: TrendingUp, color: "var(--warning)" },
-  { id: 2, type: "bid_change" as const, priority: "urgent" as const, title: "B 성형외과 CTR 급락 감지", message: "'쌍꺼풀수술가격' 키워드 CTR이 전일 대비 50% 하락했습니다. 소재 점검이 필요합니다.", time: "12분 전", read: false, icon: AlertTriangle, color: "var(--error)" },
-  { id: 3, type: "report_sent" as const, priority: "normal" as const, title: "주간 리포트 발송 완료", message: "6개 고객사에 주간 성과 보고서가 자동 발송되었습니다.", time: "1시간 전", read: false, icon: FileText, color: "var(--success)" },
-  { id: 4, type: "bid_change" as const, priority: "high" as const, title: "C 치과의원 일예산 90% 소진", message: "현재 15:00 기준으로 일예산의 90%가 소진되었습니다. 오후 광고 노출이 제한될 수 있습니다.", time: "2시간 전", read: true, icon: AlertTriangle, color: "var(--warning)" },
-  { id: 5, type: "system" as const, priority: "normal" as const, title: "D 부동산 API 연결 오류", message: "네이버 API 연결이 끊어졌습니다. 자동 재연결을 시도하고 있습니다.", time: "3시간 전", read: true, icon: Wifi, color: "var(--error)" },
-  { id: 6, type: "bid_change" as const, priority: "normal" as const, title: "E 학원 '수학학원추천' 입찰 최적화 완료", message: "시간대 차등 전략에 의해 15~18시 입찰가가 +20% 상향 적용되었습니다.", time: "4시간 전", read: true, icon: TrendingUp, color: "var(--info)" },
-  { id: 7, type: "system" as const, priority: "low" as const, title: "시스템 업데이트 안내", message: "Agency OS v1.0.3 업데이트가 적용되었습니다. AI 입찰 정확도가 개선되었습니다.", time: "어제", read: true, icon: Info, color: "var(--text-muted)" },
-];
+const notifications: { id: number; type: "bid_change" | "report_sent" | "system"; priority: "urgent" | "high" | "normal" | "low"; title: string; message: string; time: string; read: boolean; icon: any; color: string }[] = [];
 
 const tabs: { key: NotificationType; label: string }[] = [
   { key: "all", label: "전체" },

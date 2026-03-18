@@ -9,9 +9,13 @@ import { isAiFeatureEnabled, getAutoBidConfig } from '@/lib/ai/feature-flags';
 export const maxDuration = 60;
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  // Cron 인증
+  // ──── Cron 인증 (Fail-Close) ────
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return apiError('CRON_SECRET 환경변수가 설정되지 않았습니다.', 500);
+  }
   const authHeader = req.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return apiError('Unauthorized', 401);
   }
 
@@ -39,8 +43,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     return apiResponse({ message: 'No auto-managed keywords found', processed: 0 });
   }
 
-  const results: any[] = [];
-
   // 배치 분석
   const keywordsData = keywords.map(k => ({
     id: k.id,
@@ -67,12 +69,12 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   });
 
   if (aiResult.isMock) {
-    // Mock 모드: 변경 없이 로그만
     return apiResponse({ message: 'Mock mode - no changes applied', processed: 0, mock: true });
   }
 
   // AI 응답 파싱
   const recommendations = parseJsonResponse<any[]>(aiResult.content, []);
+  const validRecs: Array<{ keyword: typeof keywords[0]; newBid: number; rec: any }> = [];
 
   for (const rec of Array.isArray(recommendations) ? recommendations : []) {
     const keyword = keywords.find(k => k.id === rec.keywordId);
@@ -92,38 +94,50 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     }
 
     if (newBid === keyword.currentBid) continue;
+    validRecs.push({ keyword, newBid, rec });
+  }
 
-    // DB에 기록 (실제 네이버 API 호출은 NaverAdsClient 연동 후)
-    await prisma.bidHistory.create({
-      data: {
-        keywordId: keyword.id,
-        organizationId: keyword.organizationId,
-        oldBid: keyword.currentBid,
-        newBid,
-        reason: rec.reason || 'AI 자동 입찰 조정',
-        changedBy: 'ai',
-      },
+  // ──── 배치 트랜잭션 + OCC(Optimistic Concurrency Control) ────
+  const results: any[] = [];
+
+  if (validRecs.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      for (const { keyword, newBid, rec } of validRecs) {
+        // OCC: version 확인 후 업데이트 — 동시 수정 시 건너뛰기
+        const updated = await tx.keyword.updateMany({
+          where: { id: keyword.id, version: keyword.version },
+          data: { currentBid: newBid, version: { increment: 1 } },
+        });
+
+        if (updated.count === 0) continue; // 동시 수정 충돌 시 건너뛰기
+
+        await tx.bidHistory.create({
+          data: {
+            keywordId: keyword.id,
+            organizationId: keyword.organizationId,
+            oldBid: keyword.currentBid,
+            newBid,
+            reason: rec.reason || 'AI 자동 입찰 조정',
+            changedBy: 'ai',
+          },
+        });
+
+        await tx.aiActionLog.create({
+          data: {
+            organizationId: keyword.organizationId,
+            actionType: 'bid_adjustment',
+            entityType: 'Keyword',
+            entityId: keyword.id,
+            inputData: { keyword: keyword.keywordText, currentBid: keyword.currentBid, strategy: keyword.bidStrategy },
+            outputData: { newBid, reason: rec.reason, confidence: rec.confidence },
+            confidence: rec.confidence,
+            isApproved: true,
+          },
+        });
+
+        results.push({ keywordId: keyword.id, keyword: keyword.keywordText, oldBid: keyword.currentBid, newBid });
+      }
     });
-
-    await prisma.keyword.update({
-      where: { id: keyword.id },
-      data: { currentBid: newBid, version: { increment: 1 } },
-    });
-
-    await prisma.aiActionLog.create({
-      data: {
-        organizationId: keyword.organizationId,
-        actionType: 'bid_adjustment',
-        entityType: 'Keyword',
-        entityId: keyword.id,
-        inputData: { keyword: keyword.keywordText, currentBid: keyword.currentBid, strategy: keyword.bidStrategy },
-        outputData: { newBid, reason: rec.reason, confidence: rec.confidence },
-        confidence: rec.confidence,
-        isApproved: true,
-      },
-    });
-
-    results.push({ keywordId: keyword.id, keyword: keyword.keywordText, oldBid: keyword.currentBid, newBid });
   }
 
   return apiResponse({ processed: results.length, results, model: aiResult.model });

@@ -14,34 +14,10 @@ type TabType = "overview" | "events" | "blocked" | "report";
 type EventStatus = "all" | "pending" | "confirmed" | "dismissed";
 type PeriodFilter = "today" | "7d" | "30d";
 
-// ── Mock Data ──
-
-const dailySummaries = [
-  { date: "2025-03-15", account: "A 법률사무소", totalClicks: 342, fraudClicks: 18, fraudRate: 5.26, estimatedLoss: 23400, blockedIps: 3, refundRequested: 23400, refundApproved: 18700 },
-  { date: "2025-03-14", account: "A 법률사무소", totalClicks: 289, fraudClicks: 12, fraudRate: 4.15, estimatedLoss: 15600, blockedIps: 2, refundRequested: 15600, refundApproved: 12400 },
-  { date: "2025-03-14", account: "B 성형외과", totalClicks: 501, fraudClicks: 31, fraudRate: 6.19, estimatedLoss: 40300, blockedIps: 5, refundRequested: 40300, refundApproved: 32200 },
-  { date: "2025-03-13", account: "A 법률사무소", totalClicks: 310, fraudClicks: 8, fraudRate: 2.58, estimatedLoss: 10400, blockedIps: 1, refundRequested: 10400, refundApproved: 10400 },
-  { date: "2025-03-13", account: "C 치과의원", totalClicks: 178, fraudClicks: 22, fraudRate: 12.36, estimatedLoss: 28600, blockedIps: 4, refundRequested: 28600, refundApproved: 22800 },
-  { date: "2025-03-12", account: "B 성형외과", totalClicks: 465, fraudClicks: 15, fraudRate: 3.23, estimatedLoss: 19500, blockedIps: 2, refundRequested: 19500, refundApproved: 15600 },
-];
-
-const fraudEvents = [
-  { id: "CFE-001", account: "A 법률사무소", keyword: "형사변호사", campaign: "브랜드 캠페인", time: "03/15 14:32", ip: "a1b2***", device: "d8f3***", geo: "🇰🇷 서울", dwell: 120, score: 0.92, rules: ["반복클릭", "짧은체류"], status: "pending" as const },
-  { id: "CFE-002", account: "B 성형외과", keyword: "쌍꺼풀수술", campaign: "검색 캠페인", time: "03/15 13:18", ip: "c3d4***", device: "e7f1***", geo: "🇰🇷 경기", dwell: 45, score: 0.87, rules: ["VPN감지", "반복클릭"], status: "pending" as const },
-  { id: "CFE-003", account: "B 성형외과", keyword: "코성형가격", campaign: "검색 캠페인", time: "03/15 12:55", ip: "e5f6***", device: "a2b8***", geo: "🇨🇳 베이징", dwell: 8, score: 0.95, rules: ["해외IP", "봇패턴"], status: "confirmed" as const },
-  { id: "CFE-004", account: "A 법률사무소", keyword: "이혼변호사", campaign: "일반 캠페인", time: "03/15 11:40", ip: "g7h8***", device: "c4d9***", geo: "🇰🇷 부산", dwell: 3200, score: 0.31, rules: ["낮은스코어"], status: "dismissed" as const },
-  { id: "CFE-005", account: "C 치과의원", keyword: "임플란트가격", campaign: "지역 캠페인", time: "03/15 10:22", ip: "i9j0***", device: "e5f0***", geo: "🇰🇷 대전", dwell: 67, score: 0.78, rules: ["짧은체류", "반복클릭"], status: "pending" as const },
-  { id: "CFE-006", account: "C 치과의원", keyword: "치아교정비용", campaign: "지역 캠페인", time: "03/14 18:05", ip: "k1l2***", device: "g6h1***", geo: "🇰🇷 인천", dwell: 210, score: 0.65, rules: ["의심패턴"], status: "confirmed" as const },
-  { id: "CFE-007", account: "A 법률사무소", keyword: "형사변호사", campaign: "브랜드 캠페인", time: "03/14 16:30", ip: "a1b2***", device: "d8f3***", geo: "🇰🇷 서울", dwell: 95, score: 0.91, rules: ["반복클릭", "동일디바이스"], status: "confirmed" as const },
-];
-
-const blockedIps = [
-  { id: "BIP-001", account: "A 법률사무소", ipHash: "a1b2***", ipMasked: "203.xxx.xxx.12", reason: "rule_based" as const, rules: ["반복클릭 5회 초과"], fraudCount: 12, loss: 156000, isActive: true, blockedAt: "03/15 14:35", expires: "04/15" },
-  { id: "BIP-002", account: "B 성형외과", ipHash: "c3d4***", ipMasked: "118.xxx.xxx.45", reason: "ml_detected" as const, rules: ["ML 이상탐지 Score 0.94"], fraudCount: 8, loss: 104000, isActive: true, blockedAt: "03/15 13:20", expires: "04/15" },
-  { id: "BIP-003", account: "B 성형외과", ipHash: "e5f6***", ipMasked: "42.xxx.xxx.88", reason: "rule_based" as const, rules: ["해외IP+봇패턴"], fraudCount: 23, loss: 299000, isActive: true, blockedAt: "03/14 12:00", expires: "04/14" },
-  { id: "BIP-004", account: "C 치과의원", ipHash: "m3n4***", ipMasked: "175.xxx.xxx.33", reason: "manual" as const, rules: ["관리자 수동 차단"], fraudCount: 5, loss: 65000, isActive: false, blockedAt: "03/10 09:00", expires: "-" },
-  { id: "BIP-005", account: "A 법률사무소", ipHash: "o5p6***", ipMasked: "211.xxx.xxx.67", reason: "ml_detected" as const, rules: ["비정상 클릭패턴"], fraudCount: 15, loss: 195000, isActive: true, blockedAt: "03/12 16:45", expires: "04/12" },
-];
+// ── 데이터는 API에서 로드 (Mock Data 제거) ──
+const dailySummaries: any[] = [];
+const fraudEvents: any[] = [];
+const blockedIps: any[] = [];
 
 // ── Helpers ──
 const fmt = (n: number) => n.toLocaleString("ko-KR");
@@ -272,7 +248,7 @@ export default function ClickFraudPage() {
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                            {e.rules.map((r, i) => (
+                            {e.rules.map((r: string, i: number) => (
                               <span key={i} style={{ fontSize: "0.643rem", background: "var(--surface-hover)", padding: "2px 6px", borderRadius: 4 }}>{r}</span>
                             ))}
                           </div>
@@ -338,7 +314,7 @@ export default function ClickFraudPage() {
                         </td>
                         <td>
                           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                            {b.rules.map((r, i) => (
+                            {b.rules.map((r: string, i: number) => (
                               <span key={i} style={{ fontSize: "0.643rem", background: "var(--surface-hover)", padding: "2px 6px", borderRadius: 4 }}>{r}</span>
                             ))}
                           </div>

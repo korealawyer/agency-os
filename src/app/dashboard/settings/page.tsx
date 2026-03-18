@@ -21,12 +21,7 @@ const tabConfig: { key: SettingsTab; label: string; icon: typeof Building2 }[] =
 
 type MemberType = { name: string; email: string; role: string; lastLogin: string; status: string };
 
-const initialMembers: MemberType[] = [
-  { name: "김대행", email: "kim@agency.com", role: "owner", lastLogin: "오늘 09:00", status: "active" },
-  { name: "이마케터", email: "lee@agency.com", role: "admin", lastLogin: "오늘 10:30", status: "active" },
-  { name: "박실무", email: "park@agency.com", role: "editor", lastLogin: "어제 18:00", status: "active" },
-  { name: "최뷰어", email: "choi@agency.com", role: "viewer", lastLogin: "3일 전", status: "active" },
-];
+const initialMembers: MemberType[] = [];
 
 const roleLabels: Record<string, { label: string; badge: string }> = {
   owner: { label: "소유자", badge: "badge-info" },
@@ -35,22 +30,9 @@ const roleLabels: Record<string, { label: string; badge: string }> = {
   viewer: { label: "뷰어", badge: "" },
 };
 
-const activityLogs = [
-  { time: "03/12 16:05", user: "김대행", role: "소유자", action: "입찰가 변경", target: "형사변호사 ₩1,200→₩1,050", icon: "💰" },
-  { time: "03/12 15:30", user: "AI", role: "자동화", action: "자동입찰 실행", target: "15건 키워드", icon: "🤖" },
-  { time: "03/12 14:00", user: "이마케터", role: "관리자", action: "리포트 발송", target: "A 법률사무소 주간 보고서", icon: "📋" },
-  { time: "03/12 09:30", user: "박실무", role: "편집자", action: "키워드 추가", target: "'개인회생변호사' 외 2건", icon: "🔑" },
-  { time: "03/12 09:00", user: "김대행", role: "소유자", action: "로그인", target: "IP: 118.xxx.xxx.xxx", icon: "🔒" },
-  { time: "03/11 18:22", user: "김대행", role: "소유자", action: "설정 변경", target: "알림 채널 — 슬랙 활성화", icon: "⚙️" },
-  { time: "03/11 17:50", user: "AI", role: "자동화", action: "자동입찰 실행", target: "23건 키워드", icon: "🤖" },
-  { time: "03/11 14:10", user: "이마케터", role: "관리자", action: "캠페인 생성", target: "B 성형외과 — 코성형 캠페인", icon: "📊" },
-];
+const activityLogs: { time: string; user: string; role: string; action: string; target: string; icon: string }[] = [];
 
-const billingHistory = [
-  { date: "2026-03-01", desc: "Growth 플랜 — 3월 정기결제", amount: "₩600,000", status: "완료" },
-  { date: "2026-02-01", desc: "Growth 플랜 — 2월 정기결제", amount: "₩600,000", status: "완료" },
-  { date: "2026-01-01", desc: "Growth 플랜 — 1월 정기결제", amount: "₩600,000", status: "완료" },
-];
+const billingHistory: { date: string; desc: string; amount: string; status: string }[] = [];
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("org");

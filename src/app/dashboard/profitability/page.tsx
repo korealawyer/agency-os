@@ -9,30 +9,11 @@ import { useProfitability } from "@/hooks/useApi";
 
 type GradeFilter = "all" | "profit" | "low" | "loss";
 
-const summaryKpis = [
-  { label: "총 매출", value: "₩185,000,000", change: "+15%", positive: true, color: "#1E40AF" },
-  { label: "총 광고비", value: "₩45,230,000", change: "+12%", positive: false, color: "#EF4444" },
-  { label: "총 수수료", value: "₩27,600,000", change: "+18%", positive: true, color: "#10B981" },
-  { label: "순이익 (마진율)", value: "₩22,370,000 (12.1%)", change: "+8%", positive: true, color: "#7C3AED" },
-];
+const summaryKpis: { label: string; value: string; change: string; positive: boolean; color: string }[] = [];
 
-const clients = [
-  { name: "A 법률사무소", spend: 8200000, commissionRate: 15, commission: 1230000, roas: 380, margin: 18.2, grade: "profit" as const },
-  { name: "B 성형외과", spend: 12500000, commissionRate: 12, commission: 1500000, roas: 210, margin: -5.3, grade: "loss" as const },
-  { name: "C 치과의원", spend: 3400000, commissionRate: 18, commission: 612000, roas: 450, margin: 22.5, grade: "profit" as const },
-  { name: "D 부동산", spend: 6100000, commissionRate: 15, commission: 915000, roas: 290, margin: 8.1, grade: "low" as const },
-  { name: "E 학원", spend: 2800000, commissionRate: 20, commission: 560000, roas: 520, margin: 28.7, grade: "profit" as const },
-  { name: "F 인테리어", spend: 5700000, commissionRate: 13, commission: 741000, roas: 260, margin: 6.2, grade: "low" as const },
-];
+const clients: { name: string; spend: number; commissionRate: number; commission: number; roas: number; margin: number; grade: "profit" | "low" | "loss" }[] = [];
 
-const trendData = [
-  { month: "10월", revenue: 28000000, cost: 7500000, profit: 3200000 },
-  { month: "11월", revenue: 30000000, cost: 7800000, profit: 3500000 },
-  { month: "12월", revenue: 32000000, cost: 8200000, profit: 3800000 },
-  { month: "1월", revenue: 29000000, cost: 7600000, profit: 3100000 },
-  { month: "2월", revenue: 31000000, cost: 7900000, profit: 3600000 },
-  { month: "3월", revenue: 35000000, cost: 8500000, profit: 4200000 },
-];
+const trendData: { month: string; revenue: number; cost: number; profit: number }[] = [];
 
 const gradeConfig = {
   profit: { label: "🟢 수익", badge: "badge-success" },
@@ -202,12 +183,7 @@ export default function ProfitabilityPage() {
                 <table>
                   <thead><tr><th>고객</th><th>청구 상태</th><th>미수금</th><th>정산 예정</th></tr></thead>
                   <tbody>
-                    {[
-                      { name: "A 법률사무소", status: "완료", unpaid: "₩0", date: "-" },
-                      { name: "B 성형외과", status: "미수", unpaid: "₩1,500,000", date: "03/20" },
-                      { name: "C 치과의원", status: "완료", unpaid: "₩0", date: "-" },
-                      { name: "D 부동산", status: "진행중", unpaid: "₩915,000", date: "03/15" },
-                    ].map((s) => (
+                    {[].map((s: any) => (
                       <tr key={s.name}>
                         <td style={{ fontWeight: 600 }}>{s.name}</td>
                         <td><span className={`badge ${s.status === "완료" ? "badge-success" : s.status === "미수" ? "badge-error" : "badge-warning"}`}>{s.status}</span></td>
@@ -215,6 +191,9 @@ export default function ProfitabilityPage() {
                         <td>{s.date}</td>
                       </tr>
                     ))}
+                    {clients.length === 0 && (
+                      <tr><td colSpan={4} style={{ textAlign: "center", padding: "24px 0", color: "var(--text-muted)" }}>정산 데이터가 없습니다.</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>

@@ -101,7 +101,11 @@ export function useAuditLogs(page = 1, limit = 20) {
 
 export function useProfitability(period?: string) {
   const params = period ? `?period=${period}` : '';
-  return useApi(`/api/dashboard${params}`);
+  // TODO: 전용 /api/profitability 엔드포인트 구현 후 교체
+  // 현재는 dashboard의 KPI 중 비용/수익 관련 데이터를 활용
+  return useApi(`/api/dashboard${params}`, {
+    refreshInterval: 600_000,
+  });
 }
 
 export function useCompetitive() {

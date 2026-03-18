@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Plus, Search, Filter, Play, Pause, BarChart3, Package, ChevronRight, ChevronDown, ChevronUp, Square, X, Calendar } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -13,41 +13,8 @@ const periods = ["오늘", "어제", "7일", "30일", "커스텀"] as const;
 type ViewTab = "campaigns" | "adgroups";
 type StatusFilter = "all" | "active" | "paused" | "ended";
 
-const accountTree = [
-  { name: "A 법률사무소", campaigns: ["형사변호사_파워링크"] },
-  { name: "B 성형외과", campaigns: ["성형외과_브랜드"] },
-  { name: "C 치과의원", campaigns: ["임플란트_전문"] },
-  { name: "D 부동산", campaigns: ["아파트_매매"] },
-  { name: "E 학원", campaigns: ["수학학원_겨울특강"] },
-  { name: "F 인테리어", campaigns: ["인테리어_견적"] },
-];
-
-const initialCampaigns = [
-  { id: 1, name: "형사변호사_파워링크", account: "A 법률사무소", status: "active", type: "WEB_SITE", budget: "500,000", spend: "₩423,000", impressions: "15,200", clicks: "820", ctr: "5.4%", cpc: "₩516", conversions: 12, roas: "380%" },
-  { id: 2, name: "성형외과_브랜드", account: "B 성형외과", status: "active", type: "BRAND_SEARCH", budget: "800,000", spend: "₩712,000", impressions: "28,100", clicks: "1,420", ctr: "5.1%", cpc: "₩501", conversions: 8, roas: "210%" },
-  { id: 3, name: "임플란트_전문", account: "C 치과의원", status: "active", type: "WEB_SITE", budget: "200,000", spend: "₩178,000", impressions: "8,400", clicks: "390", ctr: "4.6%", cpc: "₩456", conversions: 15, roas: "450%" },
-  { id: 4, name: "아파트_매매", account: "D 부동산", status: "paused", type: "WEB_SITE", budget: "400,000", spend: "₩0", impressions: "0", clicks: "0", ctr: "-", cpc: "-", conversions: 0, roas: "-" },
-  { id: 5, name: "수학학원_겨울특강", account: "E 학원", status: "active", type: "WEB_SITE", budget: "150,000", spend: "₩134,000", impressions: "6,200", clicks: "310", ctr: "5.0%", cpc: "₩432", conversions: 18, roas: "520%" },
-  { id: 6, name: "인테리어_견적", account: "F 인테리어", status: "ended", type: "WEB_SITE", budget: "350,000", spend: "₩298,000", impressions: "12,800", clicks: "580", ctr: "4.5%", cpc: "₩514", conversions: 6, roas: "260%" },
-];
-
-const adGroups = [
-  { id: 1, name: "GRP-형사변호사", campaign: "형사변호사_파워링크", status: "active", bid: "₩600", target: "PC+Mobile", keywords: 12, impressions: "8,000", clicks: "520", ctr: "6.5%", cost: "₩312,000", conversions: 8 },
-  { id: 2, name: "GRP-교통사고", campaign: "형사변호사_파워링크", status: "active", bid: "₩400", target: "PC+Mobile", keywords: 8, impressions: "4,200", clicks: "280", ctr: "6.7%", cost: "₩112,000", conversions: 3 },
-  { id: 3, name: "GRP-음주운전", campaign: "형사변호사_파워링크", status: "paused", bid: "₩350", target: "PC Only", keywords: 5, impressions: "1,800", clicks: "90", ctr: "5.0%", cost: "₩31,500", conversions: 1 },
-  { id: 4, name: "GRP-쌍꺼풀수술", campaign: "성형외과_브랜드", status: "active", bid: "₩1,800", target: "PC+Mobile", keywords: 15, impressions: "12,000", clicks: "640", ctr: "5.3%", cost: "₩480,000", conversions: 5 },
-  { id: 5, name: "GRP-코성형", campaign: "성형외과_브랜드", status: "active", bid: "₩1,500", target: "Mobile", keywords: 10, impressions: "8,500", clicks: "380", ctr: "4.5%", cost: "₩285,000", conversions: 3 },
-  { id: 6, name: "GRP-임플란트", campaign: "임플란트_전문", status: "active", bid: "₩480", target: "PC+Mobile", keywords: 9, impressions: "6,100", clicks: "320", ctr: "5.2%", cost: "₩153,600", conversions: 12 },
-];
-
-const chartData = [
-  { name: "A 법률", roas: 380, color: "#1E40AF" },
-  { name: "B 성형", roas: 210, color: "#EF4444" },
-  { name: "C 치과", roas: 450, color: "#10B981" },
-  { name: "D 부동산", roas: 0, color: "#94A3B8" },
-  { name: "E 학원", roas: 520, color: "#10B981" },
-  { name: "F 인테리어", roas: 260, color: "#F59E0B" },
-];
+type CampaignItem = { id: number; name: string; account: string; status: string; type: string; budget: string; spend: string; impressions: string; clicks: string; ctr: string; cpc: string; conversions: number; roas: string };
+type AdGroupItem = { id: number; name: string; campaign: string; status: string; bid: string; target: string; keywords: number; impressions: string; clicks: string; ctr: string; cost: string; conversions: number };
 
 const statusFilters: { key: StatusFilter; label: string }[] = [
   { key: "all", label: "전체" }, { key: "active", label: "활성" }, { key: "paused", label: "일시정지" }, { key: "ended", label: "종료" },
@@ -64,7 +31,7 @@ function CampaignsContent() {
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set(accountFromUrl ? [accountFromUrl] : []));
   const [drawerAdGroup, setDrawerAdGroup] = useState<number | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [campaigns, setCampaigns] = useState(initialCampaigns);
+  const [campaigns, setCampaigns] = useState<CampaignItem[]>([]);
   const [newCampaignName, setNewCampaignName] = useState("");
   const [newCampaignAccount, setNewCampaignAccount] = useState("A 법률사무소");
   const [newCampaignBudget, setNewCampaignBudget] = useState("300,000");
@@ -75,12 +42,12 @@ function CampaignsContent() {
   const [chartCollapsed, setChartCollapsed] = useState(true);
   const { addToast } = useToast();
 
-  // ── API 데이터 페칭 (폴백 지원) ──
+  // ── API 데이터 페칭 ──
   const { data: apiCampaigns } = useCampaigns();
   const { data: apiAdGroups } = useAdGroups();
 
   useEffect(() => {
-    if (apiCampaigns?.length > 0) {
+    if (apiCampaigns !== undefined) {
       setCampaigns(apiCampaigns.map((c: any, i: number) => ({
         id: c.id ?? i + 1,
         name: c.name ?? '',
@@ -106,6 +73,45 @@ function CampaignsContent() {
       setExpandedAccounts(new Set([accountFromUrl]));
     }
   }, [accountFromUrl]);
+
+  // 계정 트리: 캠페인 데이터에서 동적 생성
+  const accountTree = useMemo(() => {
+    const tree = new Map<string, string[]>();
+    campaigns.forEach(c => {
+      if (!tree.has(c.account)) tree.set(c.account, []);
+      tree.get(c.account)!.push(c.name);
+    });
+    return Array.from(tree.entries()).map(([name, cmpNames]) => ({ name, campaigns: cmpNames }));
+  }, [campaigns]);
+
+  // 광고그룹: API 데이터에서 변환
+  const adGroups: AdGroupItem[] = useMemo(() => {
+    if (!apiAdGroups) return [];
+    return apiAdGroups.map((ag: any, i: number) => ({
+      id: ag.id ?? i + 1,
+      name: ag.name ?? '',
+      campaign: ag.campaign?.name ?? '',
+      status: ag.status?.toLowerCase() ?? 'active',
+      bid: ag.defaultBid ? `₩${Number(ag.defaultBid).toLocaleString()}` : '-',
+      target: ag.targetPlatform ?? 'PC+Mobile',
+      keywords: ag._count?.keywords ?? 0,
+      impressions: (ag.impressions ?? 0).toLocaleString(),
+      clicks: (ag.clicks ?? 0).toLocaleString(),
+      ctr: ag.ctr ? `${(Number(ag.ctr) * 100).toFixed(1)}%` : '-',
+      cost: ag.cost ? `₩${Number(ag.cost).toLocaleString()}` : '-',
+      conversions: ag.conversions ?? 0,
+    }));
+  }, [apiAdGroups]);
+
+  // 차트: 캠페인 데이터에서 동적 생성
+  const chartColors = ['#1E40AF', '#EF4444', '#10B981', '#F59E0B', '#6366F1', '#EC4899', '#94A3B8'];
+  const chartData = useMemo(() => {
+    return campaigns.map((c, i) => ({
+      name: c.account.length > 5 ? c.account.slice(0, 5) : c.account,
+      roas: parseInt(c.roas) || 0,
+      color: chartColors[i % chartColors.length],
+    }));
+  }, [campaigns]);
 
   const filteredCampaigns = campaigns.filter(
     (c) => (statusFilter === "all" || c.status === statusFilter) &&

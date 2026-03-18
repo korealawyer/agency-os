@@ -8,35 +8,13 @@ import { downloadCsv } from "@/utils/export";
 import { parseCSV, readFileAsText } from "@/utils/csv";
 import { useCompetitive } from "@/hooks/useApi";
 
-const overlapData = [
-  { name: "내 키워드만", value: 45, color: "#1E40AF" },
-  { name: "중첩", value: 28, color: "#7C3AED" },
-  { name: "경쟁사만", value: 32, color: "#EF4444" },
-];
+const overlapData: { name: string; value: number; color: string }[] = [];
 
-const biddingTrend = [
-  { date: "3/6", mine: 890, compA: 920, compB: 780, compC: 850 },
-  { date: "3/7", mine: 890, compA: 950, compB: 800, compC: 870 },
-  { date: "3/8", mine: 900, compA: 980, compB: 810, compC: 860 },
-  { date: "3/9", mine: 900, compA: 1050, compB: 820, compC: 890 },
-  { date: "3/10", mine: 920, compA: 1100, compB: 830, compC: 900 },
-  { date: "3/11", mine: 920, compA: 1120, compB: 840, compC: 910 },
-  { date: "3/12", mine: 950, compA: 1150, compB: 850, compC: 920 },
-];
+const biddingTrend: any[] = [];
 
-const impressionShare = [
-  { keyword: "형사변호사", mine: 35, compA: 28, compB: 22, compC: 15 },
-  { keyword: "이혼변호사", mine: 42, compA: 20, compB: 25, compC: 13 },
-  { keyword: "교통사고변호사", mine: 55, compA: 15, compB: 18, compC: 12 },
-  { keyword: "임플란트가격", mine: 30, compA: 32, compB: 20, compC: 18 },
-  { keyword: "쌍꺼풀수술", mine: 25, compA: 35, compB: 22, compC: 18 },
-];
+const impressionShare: { keyword: string; mine: number; compA: number; compB: number; compC: number }[] = [];
 
-const aiInsights = [
-  { id: 1, severity: "high", text: "경쟁사 A가 '형사변호사' 입찰가를 20% 상향했습니다. 방어 전략이 필요합니다.", action: "입찰 방어" },
-  { id: 2, severity: "medium", text: "'교통사고변호사' 경쟁 입찰가가 하락 추세입니다. 시장 점유율 확대 기회입니다.", action: "공격 확대" },
-  { id: 3, severity: "low", text: "경쟁사 C가 '임플란트가격' 키워드를 신규 진입했습니다. 모니터링을 권장합니다.", action: "모니터링" },
-];
+const aiInsights: { id: number; severity: string; text: string; action: string }[] = [];
 
 export default function CompetitivePage() {
   const [alertsEnabled, setAlertsEnabled] = useState(true);

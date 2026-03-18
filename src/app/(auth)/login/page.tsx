@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, TrendingUp, BarChart3, FileText, ArrowRight, ArrowLeft, Check, Mail, KeyRound, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { signIn } from "next-auth/react";
-import { signup } from "@/utils/auth";
 
 type AuthView = "login" | "signup" | "onboarding" | "verify" | "reset";
 
@@ -42,8 +41,9 @@ function LoginPageInner() {
   const [signupPasswordConfirm, setSignupPasswordConfirm] = useState("");
 
   const handleApiTest = () => {
+    // TODO: 실제 네이버 API 연결 테스트 구현 필요
     setApiTestResult("testing");
-    setTimeout(() => setApiTestResult("success"), 1500);
+    setTimeout(() => setApiTestResult("error"), 1500);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -101,14 +101,40 @@ function LoginPageInner() {
     }
 
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
 
-    const result = signup(signupName, signupEmail, signupPassword, signupAgency);
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: signupName,
+          email: signupEmail,
+          password: signupPassword,
+          organizationName: signupAgency || signupName + '의 에이전시',
+        }),
+      });
+      const data = await res.json();
 
-    if (result.success) {
-      setView("verify");
-    } else {
-      setAuthError(result.error || "회원가입에 실패했습니다.");
+      if (res.ok) {
+        // 자동 로그인 후 대시보드로 이동
+        const loginResult = await signIn('credentials', {
+          email: signupEmail,
+          password: signupPassword,
+          redirect: false,
+        });
+        if (loginResult?.ok) {
+          router.push('/dashboard');
+        } else {
+          // 회원가입 성공했지만 자동 로그인 실패 시 로그인 폼으로
+          setView('login');
+          setLoginEmail(signupEmail);
+          setAuthError('회원가입이 완료되었습니다. 로그인해주세요.');
+        }
+      } else {
+        setAuthError(data.error?.message || '회원가입에 실패했습니다.');
+      }
+    } catch {
+      setAuthError('서버와의 연결에 실패했습니다. 다시 시도해주세요.');
     }
     setIsLoading(false);
   };
@@ -130,9 +156,7 @@ function LoginPageInner() {
         <div className="login-hero-feature"><TrendingUp size={20} /><span>✨ AI 자동 입찰로 ROAS 30% 향상</span></div>
         <div className="login-hero-feature"><BarChart3 size={20} /><span>📊 30개 계정을 하나의 대시보드에서</span></div>
         <div className="login-hero-feature"><FileText size={20} /><span>📋 원클릭 클라이언트 리포트 자동 생성</span></div>
-        <div style={{ marginTop: 40, padding: "14px 18px", background: "rgba(255,255,255,0.1)", borderRadius: 12, fontSize: "0.857rem" }}>
-          💡 <strong>데모 계정:</strong> admin@agency.com / password
-        </div>
+
       </div>
 
       {/* Right Form Section */}
@@ -179,9 +203,9 @@ function LoginPageInner() {
                 </div>
               )}
               <div className="login-divider">또는</div>
-              <button type="button" className="social-btn">
+              <button type="button" className="social-btn" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>
                 <svg width="18" height="18" viewBox="0 0 18 18"><path d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z" fill="#4285F4"/><path d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z" fill="#34A853"/><path d="M4.5 10.52a4.8 4.8 0 010-3.04V5.41H1.83a8 8 0 000 7.18l2.67-2.07z" fill="#FBBC05"/><path d="M8.98 3.58c1.16 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 001.83 5.4L4.5 7.49a4.77 4.77 0 014.48-3.9z" fill="#EA4335"/></svg>
-                Google로 계속하기
+                Google 로그인 (준비 중)
               </button>
               <p style={{ textAlign: "center", marginTop: "24px", fontSize: "0.857rem", color: "var(--text-secondary)" }}>
                 계정이 없으신가요? <a href="#" style={{ fontWeight: 600 }} onClick={(e) => { e.preventDefault(); setView("signup"); setAuthError(null); }}>무료 체험 시작하기</a>
@@ -217,18 +241,12 @@ function LoginPageInner() {
           {view === "verify" && (
             <div style={{ textAlign: "center", padding: "32px 0" }}>
               <Mail size={48} color="var(--primary)" style={{ marginBottom: 16 }} />
-              <h2>📧 이메일을 확인해주세요</h2>
+              <h2>✅ 회원가입 완료</h2>
               <p style={{ color: "var(--text-secondary)", margin: "12px 0 24px" }}>
-                <strong>{signupEmail || "user@example.com"}</strong> 으로<br />인증 메일을 발송했습니다.
+                <strong>{signupEmail || "user@example.com"}</strong> 계정이 생성되었습니다.
               </p>
-              <button className="btn btn-secondary" style={{ width: "100%" }}>📨 인증 메일 다시 보내기</button>
-              <p style={{ fontSize: "0.857rem", color: "var(--text-muted)", marginTop: 12 }}>60초 후 재발송 가능</p>
-              <hr style={{ margin: "24px 0", border: "none", borderTop: "1px solid var(--border)" }} />
-              <p style={{ fontSize: "0.786rem", color: "var(--text-muted)" }}>
-                스팸함도 확인해주세요.<br />문제가 계속되면 <a href="#">support@agencyos.kr</a>에 문의
-              </p>
-              <button className="btn btn-primary btn-lg" style={{ width: "100%", marginTop: 24 }} onClick={() => { setView("onboarding"); setOnboardingStep(1); }}>
-                인증 완료 → 온보딩 시작
+              <button className="btn btn-primary btn-lg" style={{ width: "100%", marginTop: 24 }} onClick={() => { setView("login"); setLoginEmail(signupEmail); setAuthError(null); }}>
+                로그인하러 가기
               </button>
             </div>
           )}
@@ -316,8 +334,8 @@ function LoginPageInner() {
                   <h2>비밀번호 재설정</h2>
                   <p className="subtitle">가입한 이메일 주소를 입력하세요</p>
                   <div className="form-group"><label className="form-label">이메일</label><input type="email" className="form-input" placeholder="name@agency.com" /></div>
-                  <button className="btn btn-primary btn-lg" style={{ width: "100%", marginTop: 8 }} onClick={() => setResetStep(2)}>
-                    재설정 링크 보내기
+                  <button className="btn btn-primary btn-lg" style={{ width: "100%", marginTop: 8, opacity: 0.6 }} disabled>
+                    재설정 링크 보내기 (준비 중)
                   </button>
                 </>
               ) : (

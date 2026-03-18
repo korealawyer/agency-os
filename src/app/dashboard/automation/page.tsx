@@ -8,21 +8,15 @@ import { useAiActions } from "@/hooks/useApi";
 type ConfirmMode = "semi" | "full" | "manual";
 
 const strategies = [
-  { key: "target_rank", label: "목표 순위", icon: Target, desc: "1~3위 유지. AI가 실시간 입찰가 자동 조정", active: 847, color: "#1E40AF" },
-  { key: "target_cpc", label: "목표 CPC", icon: DollarSign, desc: "클릭당 500원 이하. 해당 CPC로 최대 순위 확보", active: 523, color: "#10B981" },
-  { key: "target_roas", label: "목표 ROAS", icon: TrendingUp, desc: "투자 대비 300% 수익. 전환 데이터 기반 최적화", active: 312, color: "#7C3AED" },
-  { key: "max_conversion", label: "최대 전환", icon: BarChart3, desc: "예산 내 전환 수 극대화. AI가 입찰가·시간대 자동 최적화", active: 198, color: "#F59E0B" },
-  { key: "time_based", label: "시간대 차등", icon: Clock, desc: "09~18시 공격적, 야간 보수적. 시간대별 자동 조정", active: 156, color: "#EC4899" },
-  { key: "manual", label: "수동", icon: Shield, desc: "사용자가 직접 입찰가 설정. AI 추천만 제공", active: 811, color: "#94A3B8" },
+  { key: "target_rank", label: "목표 순위", icon: Target, desc: "1~3위 유지. AI가 실시간 입찰가 자동 조정", active: 0, color: "#1E40AF" },
+  { key: "target_cpc", label: "목표 CPC", icon: DollarSign, desc: "클릭당 500원 이하. 해당 CPC로 최대 순위 확보", active: 0, color: "#10B981" },
+  { key: "target_roas", label: "목표 ROAS", icon: TrendingUp, desc: "투자 대비 300% 수익. 전환 데이터 기반 최적화", active: 0, color: "#7C3AED" },
+  { key: "max_conversion", label: "최대 전환", icon: BarChart3, desc: "예산 내 전환 수 극대화. AI가 입찰가·시간대 자동 최적화", active: 0, color: "#F59E0B" },
+  { key: "time_based", label: "시간대 차등", icon: Clock, desc: "09~18시 공격적, 야간 보수적. 시간대별 자동 조정", active: 0, color: "#EC4899" },
+  { key: "manual", label: "수동", icon: Shield, desc: "사용자가 직접 입찰가 설정. AI 추천만 제공", active: 0, color: "#94A3B8" },
 ];
 
-const executionLogs = [
-  { time: "03/12 10:05", user: "AI", target: "A 법률사무소 / 형사변호사", action: "입찰가 ₩1,200 → ₩1,150", result: "성공" },
-  { time: "03/12 09:30", user: "AI", target: "B 성형외과 / 쌍꺼풀수술가격", action: "입찰가 ₩2,500 → ₩2,400", result: "성공" },
-  { time: "03/12 09:00", user: "김대행", target: "C 치과의원 / 임플란트가격", action: "전략 변경: 수동 → 목표 ROAS", result: "성공" },
-  { time: "03/11 18:00", user: "AI", target: "E 학원 / 수학학원추천", action: "시간대 입찰 강화 (15~18시 +20%)", result: "성공" },
-  { time: "03/11 15:30", user: "AI", target: "A 법률사무소 / 개인회생", action: "입찰가 ₩1,500 → ₩1,550", result: "한도 초과 - 스킵" },
-];
+const executionLogs: { time: string; user: string; target: string; action: string; result: string }[] = [];
 
 export default function AutomationPage() {
   const [confirmMode, setConfirmMode] = useState<ConfirmMode>("semi");

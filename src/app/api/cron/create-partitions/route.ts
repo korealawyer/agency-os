@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { internalPrisma } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
+  // ──── Cron 인증 (Fail-Close) ────
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return new NextResponse('CRON_SECRET not configured', { status: 500 });
+  }
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return new NextResponse('Unauthorized', { status: 401 });
   }
 

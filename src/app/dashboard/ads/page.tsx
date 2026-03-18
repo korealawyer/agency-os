@@ -35,14 +35,7 @@ interface AdData {
   testStatus?: string | null;
 }
 
-// ── Mock 데이터 ──
-const initialAds: AdData[] = [
-  { id: 1, adGroupId: 1, adGroup: "GRP-형사변호사", title: "당신의 든든한 법률 파트너", description: "초기 대응이 가장 중요합니다. 24시간 특별 전담팀 온라인 무료 파워텍스트", displayUrl: "law.example.com", landingUrl: "law.example.com/landing", status: "active", impressions: 1200, clicks: 45, ctr: 0.0375, conversions: 5, cost: 135000, testGroupId: "test-1", isControl: true, testStatus: "running" },
-  { id: 2, adGroupId: 1, adGroup: "GRP-형사변호사", title: "무료 상담 중 | 형사사건 전문 변호사", description: "승소율로 증명하는 법무법인. 비밀 보장 1:1 상담 예약.", displayUrl: "law.example.com/consult", landingUrl: "law.example.com/consulting", status: "active", impressions: 2100, clicks: 112, ctr: 0.0533, conversions: 12, cost: 224000, testGroupId: "test-1", isControl: false, testStatus: "running" },
-  { id: 3, adGroupId: 3, adGroup: "GRP-음주운전", title: "음주운전 구제 전문", description: "면허취소/정지 구제 확률 98%. 즉각 무료 상담 신청.", displayUrl: "law.example.com/dui", landingUrl: "law.example.com/dui", status: "paused", impressions: 500, clicks: 15, ctr: 0.03, conversions: 2, cost: 30000, testGroupId: null, isControl: false, testStatus: null },
-  { id: 4, adGroupId: 4, adGroup: "GRP-쌍꺼풀수술", title: "자연스러운 눈매 교정", description: "회복이 빠른 수술법 적용. 첫 방문 10% 혜택 이벤트", displayUrl: "clinic.example.com", landingUrl: "clinic.example.com/eye", status: "active", impressions: 4500, clicks: 320, ctr: 0.0711, conversions: 38, cost: 960000, testGroupId: "test-2", isControl: true, testStatus: "running" },
-  { id: 5, adGroupId: 6, adGroup: "GRP-임플란트", title: "디지털 네비게이션 임플란트", description: "출혈 및 통증 최소화. 빠른 일상 회복. 임플란트 명의가 직접 수술.", displayUrl: "dental.example.com", landingUrl: "dental.example.com/implant", status: "active", impressions: 3100, clicks: 180, ctr: 0.058, conversions: 22, cost: 540000, testGroupId: "test-2", isControl: false, testStatus: "running" },
-];
+// ── 초기 데이터 없음 (API에서 로드) ──
 
 const adGroupsList = ["전체", "GRP-형사변호사", "GRP-교통사고", "GRP-음주운전", "GRP-쌍꺼풀수술", "GRP-코성형", "GRP-임플란트"];
 
@@ -65,7 +58,7 @@ function AdsContent() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedAdGroup, setSelectedAdGroup] = useState<string>(adGroupFromUrl || "전체");
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
-  const [ads, setAds] = useState<AdData[]>(initialAds);
+  const [ads, setAds] = useState<AdData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -74,7 +67,7 @@ function AdsContent() {
   // ── API 데이터 페칭 ──
   const { data: apiAds } = useAds();
   useEffect(() => {
-    if (apiAds?.length > 0) {
+    if (apiAds !== undefined) {
       setAds(apiAds.map((a: any, i: number) => ({
         id: a.id ?? i + 1, adGroupId: a.adGroupId ?? 0, adGroup: a.adGroup?.name ?? "",
         title: a.title ?? "", description: a.description ?? "",

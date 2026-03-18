@@ -13,16 +13,7 @@ import KeywordTable, { type SortKey, type KeywordRow } from "@/components/Keywor
 
 type ViewTab = "keywords" | "rank" | "fraud";
 
-const initialKeywords = [
-  { id: 1, text: "형사변호사", group: "형사_파워링크", account: "A 법률사무소", bid: 1200, rank: 1, strategy: "target_rank", qi: 9, impressions: 4200, clicks: 280, ctr: 6.7, cpc: 890, conversions: 12, cost: 249200, trend: "up" },
-  { id: 2, text: "이혼변호사", group: "이혼_파워링크", account: "A 법률사무소", bid: 900, rank: 3, strategy: "target_cpc", qi: 7, impressions: 3100, clicks: 180, ctr: 5.8, cpc: 720, conversions: 5, cost: 129600, trend: "down" },
-  { id: 3, text: "쌍꺼풀수술가격", group: "눈성형_파워링크", account: "B 성형외과", bid: 2500, rank: 2, strategy: "target_rank", qi: 6, impressions: 8900, clicks: 420, ctr: 4.7, cpc: 1800, conversions: 3, cost: 756000, trend: "up" },
-  { id: 4, text: "코성형후기", group: "코성형_파워링크", account: "B 성형외과", bid: 1800, rank: 5, strategy: "manual", qi: 5, impressions: 5200, clicks: 210, ctr: 4.0, cpc: 1650, conversions: 1, cost: 346500, trend: "down" },
-  { id: 5, text: "임플란트가격", group: "임플란트_파워링크", account: "C 치과의원", bid: 800, rank: 2, strategy: "target_roas", qi: 8, impressions: 6100, clicks: 320, ctr: 5.2, cpc: 480, conversions: 15, cost: 153600, trend: "up" },
-  { id: 6, text: "수학학원추천", group: "수학_파워링크", account: "E 학원", bid: 600, rank: 1, strategy: "target_rank", qi: 9, impressions: 3800, clicks: 250, ctr: 6.6, cpc: 420, conversions: 18, cost: 105000, trend: "up" },
-  { id: 7, text: "인테리어견적", group: "견적_파워링크", account: "F 인테리어", bid: 700, rank: 4, strategy: "target_cpc", qi: 7, impressions: 4500, clicks: 190, ctr: 4.2, cpc: 580, conversions: 6, cost: 110200, trend: "down" },
-  { id: 8, text: "개인회생", group: "채무_파워링크", account: "A 법률사무소", bid: 1500, rank: 2, strategy: "target_rank", qi: 8, impressions: 5600, clicks: 340, ctr: 6.1, cpc: 1100, conversions: 9, cost: 374000, trend: "up" },
-];
+type KeywordItem = { id: number; text: string; group: string; account: string; bid: number; rank: number; strategy: string; qi: number; impressions: number; clicks: number; ctr: number; cpc: number; conversions: number; cost: number; trend: string };
 
 const aiRecommendedKeywords = [
   { text: "교통사고변호사", searchVol: 8200, competition: "낮음", estCpc: 680, estConv: 6 },
@@ -33,38 +24,12 @@ const aiRecommendedKeywords = [
 ];
 
 type FraudEvent = { id: number; time: string; keyword: string; ip: string; risk: string; status: string };
-const initialFraudEvents: FraudEvent[] = [
-  { id: 1, time: "10:05", keyword: "형사변호사", ip: "203.xxx.xxx.12", risk: "high", status: "pending" },
-  { id: 2, time: "10:03", keyword: "형사변호사", ip: "203.xxx.xxx.12", risk: "high", status: "pending" },
-  { id: 3, time: "09:45", keyword: "이혼변호사", ip: "118.xxx.xxx.45", risk: "medium", status: "pending" },
-  { id: 4, time: "09:30", keyword: "쌍꺼풀수술가격", ip: "211.xxx.xxx.88", risk: "medium", status: "cleared" },
-  { id: 5, time: "09:12", keyword: "형사변호사", ip: "203.xxx.xxx.12", risk: "high", status: "blocked" },
-  { id: 6, time: "08:55", keyword: "임플란트가격", ip: "175.xxx.xxx.67", risk: "low", status: "cleared" },
-];
 
-const blockedIPs = [
-  { ip: "203.xxx.xxx.12", blockedAt: "2026-03-12", reason: "동일 IP 반복 클릭 (R1)", status: "active" },
-  { ip: "211.xxx.xxx.99", blockedAt: "2026-03-11", reason: "비정상 세션 패턴 (R2)", status: "active" },
-  { ip: "118.xxx.xxx.33", blockedAt: "2026-03-10", reason: "VPN/프록시 탐지 (R3)", status: "expired" },
-];
+// 입찰 변경 이력, 순위 트렌드, 차단 IP는 API에서 가져오거나 신규 계정은 비어있음
 
-const bidHistory = [
-  { time: "03/12 10:05", keyword: "형사변호사", from: 1250, to: 1200, by: "AI", reason: "목표 순위 유지" },
-  { time: "03/12 09:30", keyword: "쌍꺼풀수술가격", from: 2600, to: 2500, by: "AI", reason: "CPC 초과 방지" },
-  { time: "03/11 18:00", keyword: "임플란트가격", from: 780, to: 800, by: "김대행", reason: "수동 조정" },
-  { time: "03/11 15:30", keyword: "개인회생", from: 1550, to: 1500, by: "AI", reason: "일예산 초과 방지" },
-  { time: "03/11 09:00", keyword: "수학학원추천", from: 580, to: 600, by: "AI", reason: "순위 하락 방어" },
-];
+const bidHistory: { time: string; keyword: string; from: number; to: number; by: string; reason: string }[] = [];
 
-const rankTrendData = [
-  { date: "3/6", 형사변호사: 2, 임플란트가격: 3, 수학학원추천: 1, 쌍꺼풀수술가격: 3 },
-  { date: "3/7", 형사변호사: 1, 임플란트가격: 2, 수학학원추천: 2, 쌍꺼풀수술가격: 2 },
-  { date: "3/8", 형사변호사: 1, 임플란트가격: 2, 수학학원추천: 1, 쌍꺼풀수술가격: 3 },
-  { date: "3/9", 형사변호사: 2, 임플란트가격: 3, 수학학원추천: 1, 쌍꺼풀수술가격: 4 },
-  { date: "3/10", 형사변호사: 1, 임플란트가격: 2, 수학학원추천: 1, 쌍꺼풀수술가격: 2 },
-  { date: "3/11", 형사변호사: 1, 임플란트가격: 2, 수학학원추천: 1, 쌍꺼풀수술가격: 2 },
-  { date: "3/12", 형사변호사: 1, 임플란트가격: 2, 수학학원추천: 1, 쌍꺼풀수술가격: 2 },
-];
+const rankTrendData: any[] = [];
 
 const strategyLabels: Record<string, string> = {
   target_rank: "목표 순위", target_cpc: "목표 CPC", target_roas: "목표 ROAS",
@@ -95,13 +60,13 @@ export default function KeywordsPage() {
   const [selectedFraud, setSelectedFraud] = useState<Set<number>>(new Set());
   const [editingBid, setEditingBid] = useState<number | null>(null);
   const [editBidValue, setEditBidValue] = useState("");
-  const [keywords, setKeywords] = useState(initialKeywords);
+  const [keywords, setKeywords] = useState<KeywordItem[]>([]);
   const [showAiModal, setShowAiModal] = useState(false);
   const [addedRecommendations, setAddedRecommendations] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [accountFilter, setAccountFilter] = useState("전체 계정");
   const [strategyFilter, setStrategyFilter] = useState("전체 전략");
-  const [fraudEvents, setFraudEvents] = useState(initialFraudEvents);
+  const [fraudEvents, setFraudEvents] = useState<FraudEvent[]>([]);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const { addToast } = useToast();
 
@@ -114,7 +79,7 @@ export default function KeywordsPage() {
 
   // API 데이터가 있으면 로컬 상태 갱신
   useEffect(() => {
-    if (apiKeywords?.length > 0) {
+    if (apiKeywords !== undefined) {
       setKeywords(apiKeywords.map((k: any, i: number) => ({
         id: k.id ?? i + 1,
         text: k.keywordText ?? '',
@@ -134,6 +99,20 @@ export default function KeywordsPage() {
       })));
     }
   }, [apiKeywords]);
+
+  // API 부정클릭 이벤트 데이터 반영
+  useEffect(() => {
+    if (apiFraudEvents !== undefined) {
+      setFraudEvents(Array.isArray(apiFraudEvents) ? apiFraudEvents.map((e: any, i: number) => ({
+        id: e.id ?? i + 1,
+        time: e.detectedAt ? new Date(e.detectedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '-',
+        keyword: e.keyword?.keywordText ?? e.keyword ?? '',
+        ip: e.ipAddress ?? '',
+        risk: e.riskScore >= 0.8 ? 'high' : e.riskScore >= 0.5 ? 'medium' : 'low',
+        status: e.status ?? 'pending',
+      })) : []);
+    }
+  }, [apiFraudEvents]);
 
   // Sorting state
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -389,15 +368,7 @@ export default function KeywordsPage() {
                 <input className="form-input" placeholder="키워드 검색..." style={{ paddingLeft: 32 }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               </div>
               <select className="form-input" style={{ width: 180 }} value={accountFilter} onChange={(e) => setAccountFilter(e.target.value)}>
-                {dynamicAccounts.length > 1
-                  ? dynamicAccounts.map(opt => <option key={opt}>{opt}</option>)
-                  : (<>
-                      <option>전체 계정</option>
-                      <option>A 법률사무소</option>
-                      <option>B 성형외과</option>
-                      <option>C 치과의원</option>
-                    </>)
-                }
+              {dynamicAccounts.map(opt => <option key={opt}>{opt}</option>)}
               </select>
               <select className="form-input" style={{ width: 160 }} value={strategyFilter} onChange={(e) => setStrategyFilter(e.target.value)}><option>전체 전략</option><option>목표 순위</option><option>목표 CPC</option><option>목표 ROAS</option><option>수동</option></select>
               <button
@@ -598,24 +569,26 @@ export default function KeywordsPage() {
             {/* Blocked IP List */}
             <div className="card">
               <div className="card-header">
-                <h3>🚫 차단 IP 목록 ({blockedIPs.length}건)</h3>
+                <h3>🚫 차단 IP 목록 ({(apiBlockedIps ?? []).length}건)</h3>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button className="btn btn-sm btn-secondary" onClick={() => { downloadCsv("차단IP목록", ["IP", "차단일", "사유", "상태"], blockedIPs.map((ip) => [ip.ip, ip.blockedAt, ip.reason, ip.status])); addToast("success", "CSV 내보내기 완료"); }}>CSV 내보내기</button>
+                  <button className="btn btn-sm btn-secondary" onClick={() => { downloadCsv("차단IP목록", ["IP", "차단일", "사유", "상태"], (apiBlockedIps ?? []).map((ip: any) => [ip.ipAddress ?? ip.ip ?? '', ip.blockedAt ?? '', ip.reason ?? '', ip.isActive ? 'active' : 'expired'])); addToast("success", "CSV 내보내기 완료"); }}>CSV 내보내기</button>
                 </div>
               </div>
               <div className="table-wrapper">
                 <table>
                   <thead><tr><th>IP (마스킹)</th><th>차단일</th><th>사유</th><th>상태</th><th></th></tr></thead>
                   <tbody>
-                    {blockedIPs.map((ip, i) => (
+                    {(apiBlockedIps ?? []).length === 0 ? (
+                      <tr><td colSpan={5} style={{ textAlign: "center", padding: "24px 0", color: "var(--text-muted)" }}>차단된 IP가 없습니다.</td></tr>
+                    ) : (apiBlockedIps ?? []).map((ip: any, i: number) => (
                       <tr key={i}>
-                        <td style={{ fontFamily: "monospace" }}>{ip.ip}</td>
-                        <td>{ip.blockedAt}</td>
-                        <td style={{ fontSize: "0.857rem" }}>{ip.reason}</td>
+                        <td style={{ fontFamily: "monospace" }}>{ip.ipAddress ?? ip.ip ?? ''}</td>
+                        <td>{ip.blockedAt ? new Date(ip.blockedAt).toLocaleDateString('ko-KR') : '-'}</td>
+                        <td style={{ fontSize: "0.857rem" }}>{ip.reason ?? ''}</td>
                         <td>
-                          {ip.status === "active" ? <span className="badge badge-error">차단 중</span> : <span className="badge badge-info">만료</span>}
+                          {ip.isActive !== false ? <span className="badge badge-error">차단 중</span> : <span className="badge badge-info">만료</span>}
                         </td>
-                        <td>{ip.status === "active" && <button className="btn btn-ghost btn-sm" onClick={() => { setFraudEvents((prev) => prev.map((fe) => fe.ip === ip.ip ? { ...fe, status: "cleared" } : fe)); addToast("info", "IP 차단 해제", `${ip.ip} 차단이 해제되었습니다.`); }}>해제</button>}</td>
+                        <td>{ip.isActive !== false && <button className="btn btn-ghost btn-sm" onClick={() => { addToast("info", "IP 차단 해제", `${ip.ipAddress ?? ip.ip} 차단이 해제되었습니다.`); }}>해제</button>}</td>
                       </tr>
                     ))}
                   </tbody>
