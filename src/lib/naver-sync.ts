@@ -201,31 +201,33 @@ export async function syncAdGroupDetails(
       console.warn(`[Sync Phase2] 소재 조회 실패 (${adGroup.name}):`, e.message);
     }
 
-    for (const ad of naverAds) {
+    for (const naverAd of naverAds) {
+      // 네이버 소재 응답: { nccAdId, ad: { headline, description, pc: { final }, mobile: { final } } }
+      const adData = naverAd.ad ?? {};
       const existingAd = await prisma.ad.findFirst({
-        where: { naverAdId: ad.nccAdId, adGroupId: adGroup.id },
+        where: { naverAdId: naverAd.nccAdId, adGroupId: adGroup.id },
         select: { id: true },
       });
 
       await prisma.ad.upsert({
         where: { id: existingAd?.id ?? 'new' },
         update: {
-          title: ad.subject ?? ad.headline ?? null,
-          description: ad.description ?? null,
-          displayUrl: ad.displayUrl ?? null,
-          landingUrl: ad.pc?.final ?? ad.mobile?.final ?? ad.pcLandingUrl ?? null,
-          isActive: !ad.userLock,
+          title: adData.headline ?? adData.subject ?? null,
+          description: adData.description ?? null,
+          displayUrl: adData.pc?.display ?? adData.mobile?.display ?? null,
+          landingUrl: adData.pc?.final ?? adData.mobile?.final ?? null,
+          isActive: naverAd.userLock !== true,
           updatedAt: new Date(),
         },
         create: {
           adGroupId: adGroup.id,
           organizationId,
-          naverAdId: ad.nccAdId,
-          title: ad.subject ?? ad.headline ?? null,
-          description: ad.description ?? null,
-          displayUrl: ad.displayUrl ?? null,
-          landingUrl: ad.pc?.final ?? ad.mobile?.final ?? ad.pcLandingUrl ?? null,
-          isActive: !ad.userLock,
+          naverAdId: naverAd.nccAdId,
+          title: adData.headline ?? adData.subject ?? null,
+          description: adData.description ?? null,
+          displayUrl: adData.pc?.display ?? adData.mobile?.display ?? null,
+          landingUrl: adData.pc?.final ?? adData.mobile?.final ?? null,
+          isActive: naverAd.userLock !== true,
         },
       });
       result.ads++;
