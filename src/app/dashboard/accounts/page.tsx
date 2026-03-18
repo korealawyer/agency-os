@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Wifi, WifiOff, AlertCircle, MoreVertical, Key, RefreshCw, Upload, ArrowRight, X, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/Toast";
-import { useAccounts } from "@/hooks/useApi";
+import { useAccounts, apiMutate, invalidateAll } from "@/hooks/useApi";
 
 type AccountItem = { id: number; name: string; customerId: string; status: string; lastSync: string; spend: string; dailyBudget: string; commissionRate: string; campaigns: number; keywords: number; syncHistory: string[] };
 
@@ -22,6 +22,9 @@ export default function AccountsPage() {
   const [accounts, setAccounts] = useState<AccountItem[]>([]);
   const [newAccountName, setNewAccountName] = useState("");
   const [newCustomerId, setNewCustomerId] = useState("");
+  const [newApiKey, setNewApiKey] = useState("");
+  const [newSecretKey, setNewSecretKey] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { addToast } = useToast();
 
   // ── API 데이터 페칭 ──
@@ -44,22 +47,55 @@ export default function AccountsPage() {
   const usagePercent = (usedAccounts / maxAccounts) * 100;
   const drawerAccount = accounts.find((a) => a.id === selectedDrawer);
 
-  const handleApiTest = () => {
+  const handleApiTest = async () => {
+    if (!newApiKey.trim() || !newSecretKey.trim() || !newCustomerId.trim()) {
+      addToast("error", "API Key, Secret Key, Customer ID를 모두 입력해주세요");
+      return;
+    }
     setApiTestStatus("testing");
-    setTimeout(() => setApiTestStatus("success"), 1500);
+    try {
+      const res = await fetch('/api/accounts/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: newApiKey, secretKey: newSecretKey, customerId: newCustomerId }),
+      });
+      if (res.ok) {
+        setApiTestStatus("success");
+      } else {
+        setApiTestStatus("error");
+        addToast("error", "연결 실패", "API 키 또는 Secret Key를 확인해주세요.");
+      }
+    } catch {
+      setApiTestStatus("error");
+      addToast("error", "연결 테스트 실패", "네트워크 오류가 발생했습니다.");
+    }
   };
 
-  const handleAddAccount = () => {
+  const handleAddAccount = async () => {
     if (!newAccountName.trim()) { addToast("error", "광고주명을 입력해주세요"); return; }
-    const newId = Math.max(...accounts.map((a) => a.id)) + 1;
-    setAccounts((prev) => [...prev, {
-      id: newId, name: newAccountName, customerId: newCustomerId || `ncc-${newId}000000`,
-      status: "connected", lastSync: "방금 전", spend: "₩0", dailyBudget: "₩100,000",
-      commissionRate: "15%", campaigns: 0, keywords: 0, syncHistory: ["최초 연동 완료"],
-    }]);
-    addToast("success", "계정 연동 완료", `'${newAccountName}' 계정이 추가되었습니다.`);
-    setNewAccountName(""); setNewCustomerId("");
-    setShowAddModal(false); setApiTestStatus("idle");
+    if (!newApiKey.trim() || !newSecretKey.trim()) { addToast("error", "API Key와 Secret Key를 입력해주세요"); return; }
+    if (!newCustomerId.trim()) { addToast("error", "Customer ID를 입력해주세요"); return; }
+    setIsSubmitting(true);
+    try {
+      await apiMutate('/api/accounts', {
+        method: 'POST',
+        body: JSON.stringify({
+          customerName: newAccountName,
+          customerId: newCustomerId,
+          apiKey: newApiKey,
+          secretKey: newSecretKey,
+        }),
+      });
+      addToast("success", "계정 연동 완료", `'${newAccountName}' 계정이 추가되었습니다.`);
+      // SWR 캐시 갱신하여 목록 새로고침
+      invalidateAll('/api/accounts');
+      setNewAccountName(""); setNewCustomerId(""); setNewApiKey(""); setNewSecretKey("");
+      setShowAddModal(false); setApiTestStatus("idle");
+    } catch (err: any) {
+      addToast("error", "계정 추가 실패", err.message || "서버 오류가 발생했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -261,8 +297,8 @@ export default function AccountsPage() {
             </div>
             <div className="form-group"><label className="form-label">광고주명</label><input className="form-input" placeholder="예: G 파티시에" value={newAccountName} onChange={(e) => setNewAccountName(e.target.value)} /></div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div className="form-group"><label className="form-label">API License Key</label><input className="form-input" type="password" placeholder="API 키 입력" /></div>
-              <div className="form-group"><label className="form-label">Secret Key</label><input className="form-input" type="password" placeholder="Secret Key 입력" /></div>
+              <div className="form-group"><label className="form-label">API License Key</label><input className="form-input" type="password" placeholder="API 키 입력" value={newApiKey} onChange={(e) => setNewApiKey(e.target.value)} /></div>
+              <div className="form-group"><label className="form-label">Secret Key</label><input className="form-input" type="password" placeholder="Secret Key 입력" value={newSecretKey} onChange={(e) => setNewSecretKey(e.target.value)} /></div>
             </div>
             <div className="form-group"><label className="form-label">Customer ID</label><input className="form-input" placeholder="네이버 광고 고객 ID" value={newCustomerId} onChange={(e) => setNewCustomerId(e.target.value)} /></div>
             <button
@@ -277,8 +313,8 @@ export default function AccountsPage() {
             </button>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button className="btn btn-secondary" onClick={() => { setShowAddModal(false); setApiTestStatus("idle"); }}>취소</button>
-              <button className="btn btn-primary" disabled={apiTestStatus !== "success"} onClick={handleAddAccount}>
-                <Plus size={16} /> 계정 추가
+              <button className="btn btn-primary" disabled={apiTestStatus !== "success" || isSubmitting} onClick={handleAddAccount}>
+                <Plus size={16} /> {isSubmitting ? "저장 중..." : "계정 추가"}
               </button>
             </div>
           </div>
