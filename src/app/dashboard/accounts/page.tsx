@@ -87,8 +87,12 @@ export default function AccountsPage() {
         }),
       });
       addToast("success", "계정 연동 완료", `'${newAccountName}' 계정이 추가되었습니다.`);
+      addToast("info", "데이터 동기화 중", "캠페인, 광고그룹, 키워드 데이터를 자동으로 가져오고 있습니다. 잠시 후 자동 갱신됩니다.");
       // SWR 캐시 갱신하여 목록 새로고침
       invalidateAll('/api/accounts');
+      // 동기화 완료 후 자동 갱신 (10초, 30초 후)
+      setTimeout(() => { invalidateAll('/api/accounts'); invalidateAll('/api/campaigns'); invalidateAll('/api/keywords'); }, 10000);
+      setTimeout(() => { invalidateAll('/api/accounts'); invalidateAll('/api/campaigns'); invalidateAll('/api/keywords'); }, 30000);
       setNewAccountName(""); setNewCustomerId(""); setNewApiKey(""); setNewSecretKey("");
       setShowAddModal(false); setApiTestStatus("idle");
     } catch (err: any) {
