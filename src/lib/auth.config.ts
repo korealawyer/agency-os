@@ -50,6 +50,11 @@ export const authConfig: NextAuthConfig = {
         return false; // NextAuth가 자동으로 signIn 페이지로 리다이렉트
       }
 
+      // 관리자 경로 인증 체크
+      if (pathname.startsWith('/admin') && !isLoggedIn) {
+        return false;
+      }
+
       return true;
     },
   },

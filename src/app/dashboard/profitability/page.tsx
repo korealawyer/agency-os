@@ -1,15 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, Download, Filter, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from "recharts";
 import { useToast } from "@/components/Toast";
 import { downloadExcel } from "@/utils/export";
-import { useProfitability } from "@/hooks/useApi";
+import { useProfitability, useAccounts, useCampaigns } from "@/hooks/useApi";
 
 type GradeFilter = "all" | "profit" | "low" | "loss";
-
-const summaryKpis: { label: string; value: string; change: string; positive: boolean; color: string }[] = [];
 
 const clients: { name: string; spend: number; commissionRate: number; commission: number; roas: number; margin: number; grade: "profit" | "low" | "loss" }[] = [];
 
@@ -26,6 +24,20 @@ export default function ProfitabilityPage() {
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [period, setPeriod] = useState("this_month");
   const { addToast } = useToast();
+  const { data: accountsData } = useAccounts(1, 100);
+  const { data: campaignsData } = useCampaigns();
+  const accountCount = Array.isArray(accountsData) ? accountsData.length : 0;
+  const campaignCount = Array.isArray(campaignsData) ? campaignsData.length : 0;
+
+  const summaryKpis = useMemo(() => {
+    if (accountCount === 0) return [];
+    return [
+      { label: "총 관리 계정", value: `${accountCount}개`, change: "-", positive: true, color: "#1E40AF" },
+      { label: "총 캠페인", value: `${campaignCount}개`, change: "-", positive: true, color: "#7C3AED" },
+      { label: "수익성 분석", value: "준비 중", change: "통계 데이터 수집 필요", positive: true, color: "#10B981" },
+      { label: "대시보드", value: "구축 중", change: "네이버 통계 API 연동 후 활성화", positive: true, color: "#F59E0B" },
+    ];
+  }, [accountCount, campaignCount]);
 
   const filtered = clients.filter((c) => gradeFilter === "all" || c.grade === gradeFilter);
 
@@ -50,21 +62,32 @@ export default function ProfitabilityPage() {
       </header>
       <div className="main-body">
         {/* 14-A: Revenue Summary KPIs */}
-        <div className="kpi-grid">
-          {summaryKpis.map((kpi) => (
-            <div className="kpi-card" key={kpi.label}>
-              <div className="kpi-card-icon" style={{ background: `${kpi.color}15`, color: kpi.color }}>
-                <DollarSign size={20} />
+        {summaryKpis.length > 0 ? (
+          <div className="kpi-grid">
+            {summaryKpis.map((kpi) => (
+              <div className="kpi-card" key={kpi.label}>
+                <div className="kpi-card-icon" style={{ background: `${kpi.color}15`, color: kpi.color }}>
+                  <DollarSign size={20} />
+                </div>
+                <div className="kpi-card-label">{kpi.label}</div>
+                <div className="kpi-card-value">{kpi.value}</div>
+                <span className={`kpi-card-change ${kpi.positive ? "positive" : "negative"}`}>
+                  {kpi.positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                  {kpi.change}
+                </span>
               </div>
-              <div className="kpi-card-label">{kpi.label}</div>
-              <div className="kpi-card-value">{kpi.value}</div>
-              <span className={`kpi-card-change ${kpi.positive ? "positive" : "negative"}`}>
-                {kpi.positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                {kpi.change}
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="card" style={{ padding: 40, textAlign: "center", marginBottom: 20 }}>
+            <DollarSign size={48} color="var(--text-muted)" style={{ margin: "0 auto 16px" }} />
+            <h3 style={{ color: "var(--text-secondary)", marginBottom: 8 }}>수익성 데이터 준비 중</h3>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.857rem" }}>
+              네이버 광고 통계 데이터를 수집하면 자동으로 수익성 분석이 제공됩니다.<br />
+              계정 관리 페이지에서 광고 계정을 연동해주세요.
+            </p>
+          </div>
+        )}
 
         {/* 14-C: Loss Client Alert */}
         {lossClients.length > 0 && (

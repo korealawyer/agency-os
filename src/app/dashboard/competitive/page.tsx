@@ -1,25 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Shield, TrendingUp, TrendingDown, Eye, Bell, Sparkles, AlertTriangle, Upload, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from "recharts";
 import { useToast } from "@/components/Toast";
 import { downloadCsv } from "@/utils/export";
 import { parseCSV, readFileAsText } from "@/utils/csv";
-import { useCompetitive } from "@/hooks/useApi";
-
-const overlapData: { name: string; value: number; color: string }[] = [];
+import { useCompetitive, useKeywords } from "@/hooks/useApi";
 
 const biddingTrend: any[] = [];
-
 const impressionShare: { keyword: string; mine: number; compA: number; compB: number; compC: number }[] = [];
-
 const aiInsights: { id: number; severity: string; text: string; action: string }[] = [];
 
 export default function CompetitivePage() {
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [selectedKeyword, setSelectedKeyword] = useState("형사변호사");
   const { addToast } = useToast();
+  const { data: kwData } = useKeywords(1, 1000);
+  const myKeywords = Array.isArray(kwData) ? kwData.length : 0;
 
   return (
     <>
@@ -102,7 +100,7 @@ export default function CompetitivePage() {
                     border: "2px solid #1E40AF", display: "flex", alignItems: "center",
                     justifyContent: "center", flexDirection: "column",
                   }}>
-                    <strong style={{ color: "#1E40AF" }}>45</strong>
+                    <strong style={{ color: "#1E40AF" }}>{myKeywords}</strong>
                     <span style={{ fontSize: "0.714rem", color: "var(--text-muted)" }}>내 키워드</span>
                   </div>
                   <div style={{
@@ -111,7 +109,7 @@ export default function CompetitivePage() {
                     border: "2px solid #EF4444", display: "flex", alignItems: "center",
                     justifyContent: "center", flexDirection: "column",
                   }}>
-                    <strong style={{ color: "#EF4444" }}>32</strong>
+                    <strong style={{ color: "#EF4444" }}>-</strong>
                     <span style={{ fontSize: "0.714rem", color: "var(--text-muted)" }}>경쟁사</span>
                   </div>
                   <div style={{
@@ -120,15 +118,15 @@ export default function CompetitivePage() {
                     display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column",
                     zIndex: 1,
                   }}>
-                    <strong style={{ color: "#7C3AED" }}>28</strong>
+                    <strong style={{ color: "#7C3AED" }}>-</strong>
                     <span style={{ fontSize: "0.643rem", color: "var(--text-muted)" }}>중첩</span>
                   </div>
                 </div>
               </div>
               <div style={{ display: "flex", justifyContent: "center", gap: 24, fontSize: "0.857rem", marginTop: 8 }}>
-                <span><span style={{ color: "#1E40AF", fontWeight: 700 }}>45</span> 고유 키워드</span>
-                <span><span style={{ color: "#7C3AED", fontWeight: 700 }}>28</span> 경쟁 중첩</span>
-                <span><span style={{ color: "#EF4444", fontWeight: 700 }}>32</span> 경쟁사 고유</span>
+                <span><span style={{ color: "#1E40AF", fontWeight: 700 }}>{myKeywords}</span> 고유 키워드</span>
+                <span><span style={{ color: "#7C3AED", fontWeight: 700 }}>-</span> 경쟁 중첩</span>
+                <span><span style={{ color: "#EF4444", fontWeight: 700 }}>-</span> 경쟁사 고유</span>
               </div>
             </div>
           </div>
