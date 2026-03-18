@@ -3,8 +3,8 @@ import { Redis } from '@upstash/redis';
 // ──── Redis 클라이언트 (Upstash Serverless) ────
 
 const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_URL!,
-  token: process.env.UPSTASH_REDIS_TOKEN!,
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
 export default redis;
