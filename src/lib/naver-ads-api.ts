@@ -30,9 +30,11 @@ export class NaverAdsClient {
   }
 
   private async request<T>(method: string, path: string, body?: any): Promise<T> {
+    // 서명 시에는 쿼리 파라미터를 제외한 순수 경로만 사용
+    const signPath = path.split('?')[0];
     const opts: RequestInit = {
       method,
-      headers: this.getHeaders(method, path),
+      headers: this.getHeaders(method, signPath),
     };
     if (body) opts.body = JSON.stringify(body);
 

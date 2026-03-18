@@ -91,7 +91,10 @@ export async function syncAccount(accountId: string, organizationId: string): Pr
 
       // 3. 광고그룹 목록
       let adGroups: any[] = [];
-      try { adGroups = await client.getAdGroups(camp.nccCampaignId); } catch { continue; }
+      try { adGroups = await client.getAdGroups(camp.nccCampaignId); } catch (e: any) {
+        console.warn(`[Sync] 광고그룹 조회 실패 (캠페인: ${camp.name}, ID: ${camp.nccCampaignId}):`, e.message);
+        continue;
+      }
 
       for (const ag of adGroups) {
         const adGroup = await prisma.adGroup.upsert({
@@ -118,7 +121,10 @@ export async function syncAccount(accountId: string, organizationId: string): Pr
 
         // 4. 키워드 목록 + 통계
         let keywords: any[] = [];
-        try { keywords = await client.getKeywords(ag.nccAdgroupId); } catch { continue; }
+        try { keywords = await client.getKeywords(ag.nccAdgroupId); } catch (e: any) {
+          console.warn(`[Sync] 키워드 조회 실패 (광고그룹: ${ag.name}, ID: ${ag.nccAdgroupId}):`, e.message);
+          continue;
+        }
 
         // 통계 배치 조회 (id 리스트)
         const kwIds = keywords.map((k: any) => k.nccKeywordId).filter(Boolean);
@@ -130,7 +136,9 @@ export async function syncAccount(accountId: string, organizationId: string): Pr
             for (const s of statsList) {
               if (s.id) statsMap[s.id] = s;
             }
-          } catch { /* 통계 실패는 무시 */ }
+          } catch (e: any) {
+            console.warn(`[Sync] 키워드 통계 조회 실패:`, e.message);
+          }
         }
 
         for (const kw of keywords) {
