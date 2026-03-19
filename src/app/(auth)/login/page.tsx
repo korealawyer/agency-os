@@ -21,11 +21,25 @@ function LoginPageInner() {
   const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Read URL param to set initial view (e.g. /login?view=signup)
+  // Read URL params (view + NextAuth error from redirect)
   useEffect(() => {
     const viewParam = searchParams.get("view");
     if (viewParam === "signup") {
       setView("signup");
+    }
+    // Handle NextAuth error redirect (production Vercel may redirect with ?error=...)
+    const errorParam = searchParams.get("error");
+    if (errorParam) {
+      if (errorParam === "CredentialsSignin" || errorParam === "CallbackRouteError") {
+        setAuthError("이메일 또는 비밀번호가 올바르지 않습니다.");
+      } else {
+        setAuthError("로그인에 실패했습니다. 다시 시도해주세요.");
+      }
+      // Clean up URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete("error");
+      url.searchParams.delete("callbackUrl");
+      window.history.replaceState({}, "", url.pathname + url.search);
     }
   }, [searchParams]);
 
@@ -63,6 +77,7 @@ function LoginPageInner() {
         email: loginEmail,
         password: loginPassword,
         redirect: false,
+        redirectTo: "/dashboard",
       });
 
       if (result?.error) {
