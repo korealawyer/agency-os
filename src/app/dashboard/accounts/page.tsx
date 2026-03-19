@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Wifi, WifiOff, AlertCircle, MoreVertical, Key, RefreshCw, Upload, ArrowRight, X, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import { useSyncContext } from "@/components/SyncContext";
 import { useAccounts, apiMutate, invalidateAll } from "@/hooks/useApi";
 
 type AccountItem = { id: number; name: string; customerId: string; status: string; lastSync: string; spend: string; dailyBudget: string; commissionRate: string; campaigns: number; keywords: number; syncHistory: string[] };
@@ -121,6 +122,7 @@ export default function AccountsPage() {
   const [syncingIds, setSyncingIds] = useState<Set<number>>(new Set());
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [syncProgress, setSyncProgress] = useState('');
+  const globalSync = useSyncContext();
 
   /** Phase1 → Phase2 단계별 동기화 */
   const handleSyncAccount = async (id: number) => {
@@ -128,10 +130,12 @@ export default function AccountsPage() {
     if (!acc) return;
     setCtxMenu(null);
     setSyncingIds((prev) => new Set(prev).add(id));
+    const initText = `${acc.name}: 캠페인/광고그룹 동기화 중...`;
+    setSyncProgress(initText);
+    globalSync.startSync(initText);
 
     try {
       // ── Phase 1: 캠페인 + 광고그룹 구조 동기화 ──
-      setSyncProgress(`${acc.name}: 캠페인/광고그룹 동기화 중...`);
       const res = await fetch(`/api/accounts/${id}/sync`, { method: "POST" });
       const data = await res.json();
 
@@ -149,7 +153,9 @@ export default function AccountsPage() {
       let totalAds = 0, totalKeywords = 0;
 
       for (let i = 0; i < adGroupIds.length; i++) {
-        setSyncProgress(`${acc.name}: 광고그룹 ${i + 1}/${adGroupIds.length} 동기화 중...`);
+        const progressText = `${acc.name}: 광고그룹 ${i + 1}/${adGroupIds.length} 동기화 중...`;
+        setSyncProgress(progressText);
+        globalSync.updateProgress(progressText);
         try {
           const r2 = await fetch(`/api/accounts/${id}/sync-adgroup`, {
             method: "POST",
@@ -174,6 +180,7 @@ export default function AccountsPage() {
     } finally {
       setSyncingIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
       setSyncProgress('');
+      globalSync.endSync();
     }
   };
 

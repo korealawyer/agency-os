@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, BarChart3, KeyRound, Zap,
   FileText, TrendingUp, Bell, Settings, Sparkles,
   DollarSign, Eye, Shield, ShieldAlert, Bot, LogOut,
-  Menu, X, Megaphone, ChevronDown,
+  Menu, X, Megaphone, ChevronDown, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
@@ -27,9 +27,7 @@ const NAV_SECTIONS = [
     emoji: "📊",
     defaultOpen: true,
     items: [
-      { href: "/dashboard/campaigns", icon: BarChart3, label: "캠페인" },
-      { href: "/dashboard/keywords", icon: KeyRound, label: "키워드" },
-      { href: "/dashboard/ads", icon: Megaphone, label: "소재" },
+      { href: "/dashboard/campaigns", icon: BarChart3, label: "광고 관리" },
     ],
   },
   {
@@ -71,11 +69,27 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { data: session } = useSession();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   // 각 섹션의 열림 상태 (기본값으로 초기화)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(NAV_SECTIONS.map((s) => [s.key, s.defaultOpen]))
   );
+
+  // localStorage에서 collapsed 상태 복원
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved === "true") setCollapsed(true);
+  }, []);
+
+  // collapsed 변경 시 main-content에 클래스 반영
+  useEffect(() => {
+    const mainContent = document.querySelector(".main-content");
+    if (mainContent) {
+      mainContent.classList.toggle("sidebar-collapsed", collapsed);
+    }
+    localStorage.setItem("sidebar-collapsed", String(collapsed));
+  }, [collapsed]);
 
   useEffect(() => {
     // 현재 활성 경로가 포함된 섹션은 자동으로 열기
@@ -126,6 +140,7 @@ export default function Sidebar() {
                 className={`nav-accordion-header ${hasSectionActive ? "has-active" : ""}`}
                 onClick={() => toggleSection(section.key)}
                 aria-expanded={isOpen}
+                title={collapsed ? section.key : undefined}
               >
                 <span className="nav-accordion-emoji">{section.emoji}</span>
                 <span className="nav-accordion-label">{section.key}</span>
@@ -149,6 +164,7 @@ export default function Sidebar() {
                       href={item.href}
                       className={`nav-item nav-item-indented ${isActive ? "active" : ""}`}
                       onClick={() => setMobileOpen(false)}
+                      title={collapsed ? item.label : undefined}
                     >
                       <Icon size={16} />
                       <span>{item.label}</span>
@@ -186,7 +202,15 @@ export default function Sidebar() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="sidebar sidebar-desktop">
+      <aside className={`sidebar sidebar-desktop ${collapsed ? "collapsed" : ""}`}>
+        {/* Toggle Button */}
+        <button
+          className="sidebar-toggle-btn"
+          onClick={() => setCollapsed(prev => !prev)}
+          title={collapsed ? "사이드바 열기" : "사이드바 접기"}
+        >
+          {collapsed ? <ChevronsRight size={14} /> : <ChevronsLeft size={14} />}
+        </button>
         {sidebarContent}
       </aside>
 

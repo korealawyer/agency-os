@@ -135,11 +135,17 @@ export function useClickFraudSummary() {
 export function useAdGroups(page = 1, limit = 50, campaignId?: string) {
   const params = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (campaignId) params.set('campaignId', campaignId);
-  return useApi(`/api/ad-groups?${params}`);
+  return useApi(`/api/ad-groups?${params}`, {
+    refreshInterval: 30_000,
+    keepPreviousData: true,
+  });
 }
 
-export function useAds(page = 1, limit = 50) {
-  return useApi(`/api/ads?page=${page}&limit=${limit}`);
+export function useAds(page = 1, limit = 50, filters?: Record<string, string>) {
+  const params = new URLSearchParams({ page: String(page), limit: String(limit), ...filters });
+  return useApi(`/api/ads?${params}`, {
+    keepPreviousData: true,
+  });
 }
 
 export function useSettings() {
@@ -161,5 +167,9 @@ export function useSimulator() {
 // ──── Global Mutate Shortcut ────
 
 export function invalidateAll(keyPrefix: string) {
-  globalMutate((key: string) => typeof key === 'string' && key.startsWith(keyPrefix), undefined, { revalidate: true });
+  globalMutate(
+    (key: string) => typeof key === 'string' && key.startsWith(keyPrefix),
+    undefined,
+    { revalidate: true, populateCache: false }
+  );
 }

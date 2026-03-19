@@ -295,6 +295,7 @@ h4 { font-size: 1rem; font-weight: 600; line-height: 1.4; }
 
 .sidebar {
   width: var(--sidebar-width);
+  height: 100vh;
   background: var(--surface);
   border-right: 1px solid var(--border);
   display: flex;
@@ -304,8 +305,75 @@ h4 { font-size: 1rem; font-weight: 600; line-height: 1.4; }
   left: 0;
   bottom: 0;
   z-index: 40;
+  overflow: hidden;
   transition: width var(--transition);
 }
+
+/* ──── 사이드바 수동 접기 ──── */
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed);
+}
+.sidebar.collapsed .nav-item span,
+.sidebar.collapsed .nav-accordion-label,
+.sidebar.collapsed .nav-accordion-chevron,
+.sidebar.collapsed .nav-accordion-emoji,
+.sidebar.collapsed .nav-badge,
+.sidebar.collapsed .sidebar-user-info {
+  display: none;
+}
+.sidebar.collapsed .sidebar-logo {
+  justify-content: center;
+  padding: 0;
+}
+.sidebar.collapsed .sidebar-logo h2 {
+  display: none;
+}
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: var(--space-2) var(--space-1);
+}
+.sidebar.collapsed .nav-accordion-header {
+  justify-content: center;
+  padding: 6px var(--space-1);
+}
+.sidebar.collapsed .sidebar-user {
+  justify-content: center;
+  padding: var(--space-3);
+}
+.sidebar.collapsed .sidebar-user-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 0.714rem;
+}
+.sidebar.collapsed .sidebar-toggle-btn {
+  left: calc(var(--sidebar-collapsed) - 14px);
+}
+
+/* Toggle button */
+.sidebar-toggle-btn {
+  position: absolute;
+  right: -14px;
+  top: 18px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 50;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition);
+  color: var(--text-muted);
+}
+.sidebar-toggle-btn:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
 
 .sidebar-logo {
   height: var(--header-height);
@@ -326,6 +394,7 @@ h4 { font-size: 1rem; font-weight: 600; line-height: 1.4; }
 
 .sidebar-nav {
   flex: 1;
+  min-height: 0;
   padding: var(--space-3) var(--space-3);
   overflow-y: auto;
 }
@@ -412,6 +481,10 @@ h4 { font-size: 1rem; font-weight: 600; line-height: 1.4; }
   margin-left: var(--sidebar-width);
   flex: 1;
   min-height: 100vh;
+  transition: margin-left var(--transition);
+}
+.main-content.sidebar-collapsed {
+  margin-left: var(--sidebar-collapsed);
 }
 
 .main-header {
