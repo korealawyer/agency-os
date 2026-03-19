@@ -74,7 +74,7 @@ function AdManagerContent() {
   const [treeSearch, setTreeSearch] = useState("");
   const [detailTab, setDetailTab] = useState<DetailTab>("keywords");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [syncing, setSyncing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused">("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -329,7 +329,7 @@ function AdManagerContent() {
     return parts;
   }, [selection, selectNode]);
 
-  const toggleRow = (id: string) => setSelectedRows(prev => { const s = new Set(prev); s.has(id as any) ? s.delete(id as any) : s.add(id as any); return s; });
+  const toggleRow = (id: string) => setSelectedRows(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
 
   const saveBid = async (id: string) => {
     const newBid = parseInt(editBidValue);
@@ -524,12 +524,12 @@ function AdManagerContent() {
                   </div>
                   <div className="table-wrapper">
                     <table>
-                      <thead><tr><th style={{ width: 32 }}><input type="checkbox" /></th><th>캠페인</th>{selection.type === "root" && <th>계정</th>}<th>상태</th><th>일예산</th><th>지출</th><th>클릭</th><th>전환</th><th>ROAS</th></tr></thead>
+                      <thead><tr><th style={{ width: 32 }}><input type="checkbox" checked={selectedRows.size > 0 && applySearch(detailCampaigns, "name", "accountName").length > 0 && applySearch(detailCampaigns, "name", "accountName").every(c => selectedRows.has(String(c.id)))} onChange={(e) => { const visible = applySearch(detailCampaigns, "name", "accountName"); if (e.target.checked) { setSelectedRows(new Set(visible.map(c => String(c.id)))); } else { setSelectedRows(new Set()); } }} /></th><th>캠페인</th>{selection.type === "root" && <th>계정</th>}<th>상태</th><th>일예산</th><th>지출</th><th>클릭</th><th>전환</th><th>ROAS</th></tr></thead>
                       <tbody>
                         {applySearch(detailCampaigns, "name", "accountName").map(c => (
-                          <tr key={c.id} style={{ cursor: "pointer", background: selectedRows.has(c.id) ? "var(--primary-light)" : undefined }}
+                          <tr key={c.id} style={{ cursor: "pointer", background: selectedRows.has(String(c.id)) ? "var(--primary-light)" : undefined }}
                             onClick={() => { toggleNode(`acc-${c.accountName}`); toggleNode(`camp-${c.id}`); selectNode({ type: "campaign", id: String(c.id), accountName: c.accountName, campaignName: c.name }); }}>
-                            <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedRows.has(c.id)} onChange={() => toggleRow(c.id)} /></td>
+                            <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedRows.has(String(c.id))} onChange={() => toggleRow(String(c.id))} /></td>
                             <td style={{ fontWeight: 600 }}>{c.name}</td>
                             {selection.type === "root" && <td style={{ fontSize: "0.857rem", color: "var(--text-secondary)" }}>{c.accountName}</td>}
                             <td><StatusBadge status={c.status} /></td>
@@ -559,12 +559,12 @@ function AdManagerContent() {
                   </div>
                   <div className="table-wrapper">
                     <table>
-                      <thead><tr><th style={{ width: 32 }}><input type="checkbox" /></th><th>광고그룹</th><th>상태</th><th>기본입찰가</th><th>키워드</th><th>소재</th><th>노출</th><th>클릭</th><th>비용</th><th>전환</th></tr></thead>
+                      <thead><tr><th style={{ width: 32 }}><input type="checkbox" checked={selectedRows.size > 0 && detailAdGroups.length > 0 && detailAdGroups.every(ag => selectedRows.has(String(ag.id)))} onChange={(e) => { if (e.target.checked) { setSelectedRows(new Set(detailAdGroups.map(ag => String(ag.id)))); } else { setSelectedRows(new Set()); } }} /></th><th>광고그룹</th><th>상태</th><th>기본입찰가</th><th>키워드</th><th>소재</th><th>노출</th><th>클릭</th><th>비용</th><th>전환</th></tr></thead>
                       <tbody>
                         {applySearch(detailAdGroups, "name").map(ag => (
-                          <tr key={ag.id} style={{ cursor: "pointer", background: selectedRows.has(ag.id) ? "var(--primary-light)" : undefined }}
+                          <tr key={ag.id} style={{ cursor: "pointer", background: selectedRows.has(String(ag.id)) ? "var(--primary-light)" : undefined }}
                             onClick={() => selectNode({ type: "adgroup", id: String(ag.id), accountId: selection.accountId, accountName: selection.accountName, campaignName: selection.campaignName, adGroupName: ag.name })}>
-                            <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedRows.has(ag.id)} onChange={() => toggleRow(ag.id)} /></td>
+                            <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={selectedRows.has(String(ag.id))} onChange={() => toggleRow(String(ag.id))} /></td>
                             <td style={{ fontWeight: 600 }}>{ag.name}</td>
                             <td><StatusBadge status={ag.status} /></td>
                             <td style={{ fontWeight: 600 }}>₩{ag.defaultBid.toLocaleString()}</td>

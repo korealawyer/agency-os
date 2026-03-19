@@ -109,11 +109,15 @@ function getContextBasedResponse(message: string, context?: any): string {
 }
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  // ──── Rate Limiting ────
+  // ──── Rate Limiting (Upstash 미설정 시 스킵) ────
   const ip = getClientIp(req.headers);
-  const { success } = await copilotRateLimit.limit(ip);
-  if (!success) {
-    return apiError('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.', 429);
+  try {
+    const { success } = await copilotRateLimit.limit(ip);
+    if (!success) {
+      return apiError('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.', 429);
+    }
+  } catch {
+    // Upstash Redis 미설정 시 rate limiting 스킵
   }
 
   const user = await requireAuth(req);
