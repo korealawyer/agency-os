@@ -125,8 +125,8 @@ export default function CopilotPage() {
       </header>
 
       <div className="main-body" style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 130px)", padding: 0 }}>
-        {/* Quick Actions (show only when few messages) */}
-        {messages.length <= 1 && (
+        {/* Quick Actions (show when no user messages present) */}
+        {!messages.some(m => m.role === 'user') && (
           <div style={{ padding: "16px 24px" }}>
             <div style={{ fontSize: "0.857rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 12 }}>
               💡 빠른 질문

@@ -11,7 +11,7 @@ const createSubscriptionSchema = z.object({
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const user = await requireAuth(req);
-  requireRole(user, 'owner', 'admin');
+  requireRole(user, 'owner', 'admin', 'editor');
 
   const { page, limit, skip } = parsePagination(req.nextUrl.searchParams);
   const status = req.nextUrl.searchParams.get('status');

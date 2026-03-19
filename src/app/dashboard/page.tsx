@@ -165,15 +165,19 @@ export default function DashboardPage() {
       <header className="main-header">
         <h1 className="main-header-title">대시보드</h1>
         <div className="main-header-actions">
-          <DateRangePicker value={dateRange} onChange={setDateRange} />
+          <DateRangePicker value={dateRange} onChange={(range) => {
+            setDateRange(range);
+            const days = Math.round((range.end.getTime() - range.start.getTime()) / (1000 * 60 * 60 * 24));
+            addToast("info", "기간 변경", `최근 ${days || 1}일 데이터로 전환됩니다.`);
+          }} />
           <div style={{ position: "relative" }}>
             <Search size={18} color="var(--text-muted)" style={{ position: "absolute", left: 12, top: 10 }} />
             <input className="form-input" placeholder="계정/키워드 검색..." style={{ paddingLeft: 36, width: 200 }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
           <div ref={bellRef} style={{ position: "relative" }}>
-            <button className="btn btn-ghost" style={{ position: "relative" }} onClick={() => setShowBellPanel((v) => !v)}>
+            <button className="btn btn-ghost" style={{ position: "relative", width: 40, height: 40, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setShowBellPanel((v) => !v)} aria-label="알림">
               <Bell size={20} />
-              <span style={{ position: "absolute", top: 2, right: 2, width: 8, height: 8, background: "var(--error)", borderRadius: "50%" }} />
+              <span style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, background: "var(--error)", borderRadius: "50%" }} />
             </button>
             {showBellPanel && (
               <div style={{

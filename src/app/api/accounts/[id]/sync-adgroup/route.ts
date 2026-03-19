@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server';
 import { apiResponse, requireAuth, withErrorHandler, safeParseBody } from '@/lib/api-helpers';
 import { syncAdGroupDetails } from '@/lib/naver-sync';
 
-// Vercel Hobby 최대 60초 타임아웃
-export const maxDuration = 60;
+// Vercel Pro 최대 300초 타임아웃
+export const maxDuration = 300;
 
 /**
  * POST /api/accounts/[id]/sync-adgroup
@@ -11,9 +11,9 @@ export const maxDuration = 60;
  *
  * Body: { adGroupId: string }
  */
-export const POST = withErrorHandler(async (req: NextRequest, { params }: { params: { id: string } }) => {
+export const POST = withErrorHandler(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const user = await requireAuth(req);
-  const { id: accountId } = params;
+  const { id: accountId } = await params;
   const body: any = await safeParseBody(req);
   const adGroupId = body?.adGroupId;
 

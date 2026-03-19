@@ -6,7 +6,8 @@ import { getModelForFeature } from '@/lib/ai/model-router';
 import { parseJsonResponse } from '@/lib/ai/response-parser';
 import { isAiFeatureEnabled, getAutoBidConfig } from '@/lib/ai/feature-flags';
 
-export const maxDuration = 60;
+// Vercel Pro 최대 300초 타임아웃
+export const maxDuration = 300;
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
   // ──── Cron 인증 (Fail-Close) ────
@@ -142,3 +143,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   return apiResponse({ processed: results.length, results, model: aiResult.model });
 });
+
+// Vercel Cron은 GET으로 호출하므로 GET → POST 위임
+export const GET = POST;

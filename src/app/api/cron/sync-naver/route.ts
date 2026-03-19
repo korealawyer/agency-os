@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { syncAllAccounts } from '@/lib/naver-sync';
 import prisma from '@/lib/db';
 
-// Vercel Hobby 최대 60초 타임아웃
-export const maxDuration = 60;
+// Vercel Pro 최대 300초 타임아웃
+export const maxDuration = 300;
 
 /**
  * POST /api/cron/sync-naver
@@ -59,3 +59,6 @@ export const POST = async (req: NextRequest) => {
     totalErrors,
   });
 };
+
+// Vercel Cron은 GET으로 호출하므로 GET → POST 위임
+export const GET = POST;

@@ -1,0 +1,349 @@
+{
+  "passed": 49,
+  "failed": 8,
+  "total": 57,
+  "results": [
+    {
+      "category": "로그인",
+      "item": "로그인 폼 렌더링",
+      "ok": true,
+      "detail": "이메일/비밀번호 입력창"
+    },
+    {
+      "category": "로그인",
+      "item": "로그인 버튼 렌더링",
+      "ok": true,
+      "detail": "제출 버튼"
+    },
+    {
+      "category": "로그인",
+      "item": "인증 성공 및 리다이렉트",
+      "ok": true,
+      "detail": "https://agency-os-topaz.vercel.app/dashboard"
+    },
+    {
+      "category": "대시보드",
+      "item": "사이드바 네비게이션",
+      "ok": true,
+      "detail": "사이드바 메뉴"
+    },
+    {
+      "category": "대시보드",
+      "item": "KPI 카드 (총 광고비)",
+      "ok": true,
+      "detail": "광고비 지표"
+    },
+    {
+      "category": "대시보드",
+      "item": "KPI 카드 (총 클릭수)",
+      "ok": true,
+      "detail": "클릭수 지표"
+    },
+    {
+      "category": "대시보드",
+      "item": "KPI 카드 (전환수/ROAS)",
+      "ok": true,
+      "detail": "전환/ROAS 지표"
+    },
+    {
+      "category": "대시보드",
+      "item": "차트 렌더링",
+      "ok": true,
+      "detail": "SVG/Canvas 차트"
+    },
+    {
+      "category": "캠페인",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "캠페인",
+      "item": "캠페인 목록/테이블",
+      "ok": true,
+      "detail": "캠페인 데이터 표시"
+    },
+    {
+      "category": "캠페인",
+      "item": "데이터 행 존재",
+      "ok": true,
+      "detail": "20개 행/카드 발견"
+    },
+    {
+      "category": "캠페인",
+      "item": "상태 표시",
+      "ok": true,
+      "detail": "캠페인 상태값"
+    },
+    {
+      "category": "광고그룹",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "광고그룹",
+      "item": "콘텐츠 렌더링",
+      "ok": false,
+      "detail": "본문 33자"
+    },
+    {
+      "category": "광고그룹",
+      "item": "UI 컴포넌트",
+      "ok": false,
+      "detail": "0개 컴포넌트"
+    },
+    {
+      "category": "키워드",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "키워드",
+      "item": "키워드 테이블",
+      "ok": true,
+      "detail": "키워드 데이터"
+    },
+    {
+      "category": "키워드",
+      "item": "테이블 태그 존재",
+      "ok": true,
+      "detail": "<table> 렌더링"
+    },
+    {
+      "category": "키워드",
+      "item": "입찰가 데이터",
+      "ok": true,
+      "detail": "입찰가/CPC 표시"
+    },
+    {
+      "category": "키워드",
+      "item": "품질지수",
+      "ok": false,
+      "detail": "품질지수 컬럼"
+    },
+    {
+      "category": "광고소재",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "광고소재",
+      "item": "광고 데이터",
+      "ok": true,
+      "detail": "광고소재 콘텐츠"
+    },
+    {
+      "category": "광고소재",
+      "item": "모의 데이터",
+      "ok": true,
+      "detail": "모의 데이터 표시"
+    },
+    {
+      "category": "자동입찰",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "자동입찰",
+      "item": "콘텐츠 렌더링",
+      "ok": false,
+      "detail": "본문 33자"
+    },
+    {
+      "category": "자동입찰",
+      "item": "입찰 관련 UI",
+      "ok": false,
+      "detail": "입찰 관련 텍스트"
+    },
+    {
+      "category": "자동입찰",
+      "item": "버튼 컴포넌트",
+      "ok": false,
+      "detail": "0개 버튼"
+    },
+    {
+      "category": "경쟁분석",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "경쟁분석",
+      "item": "경쟁 데이터",
+      "ok": true,
+      "detail": "경쟁분석 콘텐츠"
+    },
+    {
+      "category": "경쟁분석",
+      "item": "차트/그래프",
+      "ok": true,
+      "detail": "시각화 요소"
+    },
+    {
+      "category": "수익성분석",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "수익성분석",
+      "item": "수익성 데이터",
+      "ok": true,
+      "detail": "수익성 지표"
+    },
+    {
+      "category": "수익성분석",
+      "item": "차트/그래프",
+      "ok": true,
+      "detail": "시각화 요소"
+    },
+    {
+      "category": "리포트",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "리포트",
+      "item": "리포트 콘텐츠",
+      "ok": true,
+      "detail": "리포트 관련 텍스트"
+    },
+    {
+      "category": "리포트",
+      "item": "PDF/다운로드 버튼",
+      "ok": true,
+      "detail": "리포트 생성 UI"
+    },
+    {
+      "category": "자동화",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "자동화",
+      "item": "자동화 콘텐츠",
+      "ok": true,
+      "detail": "자동화 관련 텍스트"
+    },
+    {
+      "category": "자동화",
+      "item": "규칙/워크플로 UI",
+      "ok": true,
+      "detail": "자동화 규칙 카드/행"
+    },
+    {
+      "category": "알림센터",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "알림센터",
+      "item": "알림 목록",
+      "ok": true,
+      "detail": "알림 콘텐츠"
+    },
+    {
+      "category": "알림센터",
+      "item": "알림 항목 존재",
+      "ok": true,
+      "detail": "알림 항목 텍스트"
+    },
+    {
+      "category": "계정관리",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "계정관리",
+      "item": "계정 목록",
+      "ok": true,
+      "detail": "계정 데이터"
+    },
+    {
+      "category": "계정관리",
+      "item": "API 연결 상태",
+      "ok": true,
+      "detail": "연결 상태 표시"
+    },
+    {
+      "category": "계정관리",
+      "item": "계정 추가 버튼",
+      "ok": false,
+      "detail": "추가/연결 버튼"
+    },
+    {
+      "category": "설정",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "설정",
+      "item": "설정 항목",
+      "ok": true,
+      "detail": "설정 관련 텍스트"
+    },
+    {
+      "category": "설정",
+      "item": "입력 필드",
+      "ok": true,
+      "detail": "폼 요소"
+    },
+    {
+      "category": "코파일럿",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없이 로드"
+    },
+    {
+      "category": "코파일럿",
+      "item": "AI 채팅 UI",
+      "ok": true,
+      "detail": "AI 채팅 인터페이스"
+    },
+    {
+      "category": "코파일럿",
+      "item": "메시지 입력창",
+      "ok": true,
+      "detail": "채팅 입력 필드"
+    },
+    {
+      "category": "코파일럿",
+      "item": "전송 버튼",
+      "ok": true,
+      "detail": "전송 버튼"
+    },
+    {
+      "category": "코파일럿",
+      "item": "메시지 전송",
+      "ok": true,
+      "detail": "전송 메시지 화면 표시"
+    },
+    {
+      "category": "코파일럿",
+      "item": "AI 응답 수신",
+      "ok": false,
+      "detail": "응답 없음"
+    },
+    {
+      "category": "API",
+      "item": "Health API",
+      "ok": true,
+      "detail": "{\"status\":\"healthy\",\"timestamp\":\"2026-03-18T15:46:47.395Z\",\"latency\":\"4ms\",\"checks\":{\"database\":\"ok\""
+    },
+    {
+      "category": "API",
+      "item": "Auth Session API",
+      "ok": true,
+      "detail": "세션 데이터 확인"
+    }
+  ]
+}

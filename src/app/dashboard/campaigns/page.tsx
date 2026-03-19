@@ -76,6 +76,8 @@ function AdManagerContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [syncing, setSyncing] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused">("all");
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [syncingAdGroup, setSyncingAdGroup] = useState<string | null>(null);
 
   // ── 키워드 입찰 수정 ──
@@ -147,21 +149,22 @@ function AdManagerContent() {
     }));
   }, [accounts, campaigns, adGroups]);
 
-  // ── 검색 필터 ──
+  // ── 검색 + 상태 필터 ──
   const filteredTreeData = useMemo(() => {
-    if (!treeSearch.trim()) return treeData;
-    const q = treeSearch.toLowerCase();
+    const q = treeSearch.trim().toLowerCase();
     return treeData.map(acc => ({
       ...acc,
-      campaigns: acc.campaigns.filter(c =>
-        c.name.toLowerCase().includes(q) ||
-        c.adGroups.some(ag => ag.name.toLowerCase().includes(q))
-      ).map(c => ({
-        ...c,
-        adGroups: c.adGroups.filter(ag => ag.name.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)),
-      })),
-    })).filter(acc => acc.name.toLowerCase().includes(q) || acc.campaigns.length > 0);
-  }, [treeData, treeSearch]);
+      campaigns: acc.campaigns
+        .filter(c => statusFilter === 'all' || c.status === statusFilter)
+        .filter(c =>
+          !q || c.name.toLowerCase().includes(q) ||
+          c.adGroups.some(ag => ag.name.toLowerCase().includes(q))
+        ).map(c => ({
+          ...c,
+          adGroups: c.adGroups.filter(ag => !q || ag.name.toLowerCase().includes(q) || c.name.toLowerCase().includes(q)),
+        })),
+    })).filter(acc => !q || acc.name.toLowerCase().includes(q) || acc.campaigns.length > 0);
+  }, [treeData, treeSearch, statusFilter]);
 
   // ── 트리 조작 ──
   const toggleNode = useCallback((nodeId: string) => {
@@ -382,11 +385,25 @@ function AdManagerContent() {
     max_conversion: "최대전환", time_based: "시간차등", manual: "수동",
   };
 
+  // ── 상태 필터 적용 ──
+  const statusCounts = useMemo(() => {
+    const all = campaigns.length;
+    const active = campaigns.filter(c => c.status === 'active').length;
+    const paused = campaigns.filter(c => c.status === 'paused').length;
+    return { all, active, paused };
+  }, [campaigns]);
+
   return (
     <>
       <header className="main-header">
         <h1 className="main-header-title">광고 관리</h1>
         <div className="main-header-actions" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {/* 상태 필터 */}
+          <div style={{ display: "flex", gap: 4, background: "var(--surface-hover)", borderRadius: "var(--radius-lg)", padding: 3 }}>
+            <button className={`btn btn-sm ${statusFilter === 'all' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setStatusFilter('all')}>전체 ({statusCounts.all})</button>
+            <button className={`btn btn-sm ${statusFilter === 'active' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setStatusFilter('active')}>활성 ({statusCounts.active})</button>
+            <button className={`btn btn-sm ${statusFilter === 'paused' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setStatusFilter('paused')}>정지 ({statusCounts.paused})</button>
+          </div>
           {/* 마지막 동기화 시간 */}
           <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "0.786rem", color: "var(--text-muted)" }}>
             <Clock size={13} />
@@ -397,6 +414,11 @@ function AdManagerContent() {
             style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <RefreshCw size={15} className={syncing ? "spin" : ""} style={syncing ? { animation: "spin 1s linear infinite" } : {}} />
             {syncing ? (syncProgress || "동기화 중...") : "재동기화"}
+          </button>
+          {/* 캠페인 생성 */}
+          <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Plus size={15} /> 캠페인 생성
           </button>
         </div>
       </header>
@@ -666,6 +688,48 @@ function AdManagerContent() {
           </div>
         </div>
       </div>
+
+      {/* 캠페인 생성 모달 */}
+      {showCreateModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ background: "var(--bg-card, var(--surface))", borderRadius: 16, padding: 32, maxWidth: 520, width: "90%", boxShadow: "0 25px 50px rgba(0,0,0,0.25)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 style={{ margin: 0 }}>📋 새 캠페인 생성</h3>
+              <button className="btn btn-ghost btn-sm" onClick={() => setShowCreateModal(false)}>✕</button>
+            </div>
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="form-label">캠페인명</label>
+              <input className="form-input" placeholder="예: 브랜드 키워드 캠페인" />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+              <div className="form-group">
+                <label className="form-label">캠페인 유형</label>
+                <select className="form-input">
+                  <option>웹사이트 트래픽</option>
+                  <option>브랜드 검색</option>
+                  <option>쇼핑 검색</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">일 예산</label>
+                <input className="form-input" type="number" placeholder="50000" />
+              </div>
+            </div>
+            <div className="form-group" style={{ marginBottom: 16 }}>
+              <label className="form-label">연결 계정</label>
+              <select className="form-input">
+                {accounts.map(acc => <option key={acc.id || acc.name} value={acc.id}>{acc.name}</option>)}
+              </select>
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>취소</button>
+              <button className="btn btn-primary" onClick={() => { addToast("info", "캠페인 생성", "네이버 광고 관리 시스템에서 캠페인을 생성해주세요. 동기화 시 자동으로 반영됩니다."); setShowCreateModal(false); }}>
+                <Plus size={14} /> 생성
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 스핀 애니메이션 */}
       <style jsx>{`

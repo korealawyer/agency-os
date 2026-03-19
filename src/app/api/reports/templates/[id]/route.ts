@@ -17,7 +17,7 @@ const updateTemplateSchema = z.object({
 
 export const PATCH = withErrorHandler(async (req: NextRequest, context: any) => {
   const user = await requireAuth(req);
-  requireRole(user, 'owner', 'admin');
+  requireRole(user, 'owner', 'admin', 'editor');
 
   const { id } = await context.params;
   const body = await safeParseBody(req);
@@ -45,7 +45,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, context: any) => 
 
 export const DELETE = withErrorHandler(async (req: NextRequest, context: any) => {
   const user = await requireAuth(req);
-  requireRole(user, 'owner', 'admin');
+  requireRole(user, 'owner', 'admin', 'editor');
 
   const { id } = await context.params;
 

@@ -1,0 +1,134 @@
+{
+  "passed": 15,
+  "total": 17,
+  "results": [
+    {
+      "name": "로그인",
+      "ok": true,
+      "note": "https://agency-os-topaz.vercel.app/dashboard"
+    },
+    {
+      "name": "대시보드",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "캠페인",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "광고그룹",
+      "ok": false,
+      "note": "콘텐츠 미검출"
+    },
+    {
+      "name": "키워드",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "광고소재",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "자동입찰",
+      "ok": false,
+      "note": "콘텐츠 미검출"
+    },
+    {
+      "name": "경쟁분석",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "수익성분석",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "리포트",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "자동화",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "알림센터",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "계정관리",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "설정",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "코파일럿",
+      "ok": true,
+      "note": "콘텐츠 정상"
+    },
+    {
+      "name": "코파일럿 채팅",
+      "ok": true,
+      "note": "메시지 전송 확인"
+    },
+    {
+      "name": "Health API",
+      "ok": true,
+      "note": "{\"status\":\"healthy\",\"timestamp\":\"2026-03-18T15:42:40.470Z\",\"latency\":\"5ms\",\"chec"
+    }
+  ],
+  "log": [
+    "=== 🔐 로그인 테스트 ===",
+    "로그인 → ✅ 성공 (URL: https://agency-os-topaz.vercel.app/dashboard)",
+    "\n=== 📋 전체 페이지 테스트 ===",
+    "✅ 대시보드 (/dashboard) — 콘텐츠 정상",
+    "✅ 캠페인 (/dashboard/campaigns) — 콘텐츠 정상",
+    "❌ 광고그룹 (/dashboard/adgroups) — 콘텐츠 미검출",
+    "✅ 키워드 (/dashboard/keywords) — 콘텐츠 정상",
+    "✅ 광고소재 (/dashboard/ads) — 콘텐츠 정상",
+    "❌ 자동입찰 (/dashboard/auto-bidding) — 콘텐츠 미검출",
+    "✅ 경쟁분석 (/dashboard/competitive) — 콘텐츠 정상",
+    "✅ 수익성분석 (/dashboard/profitability) — 콘텐츠 정상",
+    "✅ 리포트 (/dashboard/reports) — 콘텐츠 정상",
+    "✅ 자동화 (/dashboard/automation) — 콘텐츠 정상",
+    "✅ 알림센터 (/dashboard/notifications) — 콘텐츠 정상",
+    "✅ 계정관리 (/dashboard/accounts) — 콘텐츠 정상",
+    "✅ 설정 (/dashboard/settings) — 콘텐츠 정상",
+    "✅ 코파일럿 (/dashboard/copilot) — 콘텐츠 정상",
+    "\n=== 💬 코파일럿 채팅 테스트 ===",
+    "코파일럿 전송 → ✅ 성공",
+    "\n=== 🏥 Health API ===",
+    "Health API → ✅ healthy",
+    "\n========================================",
+    "📊 최종 결과: 15/17 통과",
+    "========================================",
+    "  ✅ 로그인: https://agency-os-topaz.vercel.app/dashboard",
+    "  ✅ 대시보드: 콘텐츠 정상",
+    "  ✅ 캠페인: 콘텐츠 정상",
+    "  ❌ 광고그룹: 콘텐츠 미검출",
+    "  ✅ 키워드: 콘텐츠 정상",
+    "  ✅ 광고소재: 콘텐츠 정상",
+    "  ❌ 자동입찰: 콘텐츠 미검출",
+    "  ✅ 경쟁분석: 콘텐츠 정상",
+    "  ✅ 수익성분석: 콘텐츠 정상",
+    "  ✅ 리포트: 콘텐츠 정상",
+    "  ✅ 자동화: 콘텐츠 정상",
+    "  ✅ 알림센터: 콘텐츠 정상",
+    "  ✅ 계정관리: 콘텐츠 정상",
+    "  ✅ 설정: 콘텐츠 정상",
+    "  ✅ 코파일럿: 콘텐츠 정상",
+    "  ✅ 코파일럿 채팅: 메시지 전송 확인",
+    "  ✅ Health API: {\"status\":\"healthy\",\"timestamp\":\"2026-03-18T15:42:40.470Z\",\"latency\":\"5ms\",\"chec"
+  ]
+}

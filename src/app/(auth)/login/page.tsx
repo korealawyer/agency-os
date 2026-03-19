@@ -65,20 +65,44 @@ function LoginPageInner() {
         redirect: false,
       });
 
-      if (result?.ok) {
-        router.push("/dashboard");
-      } else {
+      if (result?.error) {
+        // NextAuth returned an error object
         const attempts = loginAttempts + 1;
         setLoginAttempts(attempts);
-        setAuthError(result?.error === "CredentialsSignin" ? "이메일 또는 비밀번호가 올바르지 않습니다." : "로그인에 실패했습니다.");
+        setAuthError("이메일 또는 비밀번호가 올바르지 않습니다.");
+
+        if (attempts >= 5) {
+          setIsLocked(true);
+          setTimeout(() => { setIsLocked(false); setLoginAttempts(0); }, 15000);
+        }
+      } else if (result?.ok) {
+        router.push("/dashboard");
+      } else {
+        // Unexpected result
+        const attempts = loginAttempts + 1;
+        setLoginAttempts(attempts);
+        setAuthError("이메일 또는 비밀번호가 올바르지 않습니다.");
 
         if (attempts >= 5) {
           setIsLocked(true);
           setTimeout(() => { setIsLocked(false); setLoginAttempts(0); }, 15000);
         }
       }
-    } catch {
-      setAuthError("로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
+    } catch (err: any) {
+      // NextAuth v5 may throw instead of returning error object
+      const errMsg = err?.message || err?.toString() || "";
+      if (errMsg.includes("CredentialsSignin") || errMsg.includes("CallbackRouteError") || errMsg.includes("credentials")) {
+        const attempts = loginAttempts + 1;
+        setLoginAttempts(attempts);
+        setAuthError("이메일 또는 비밀번호가 올바르지 않습니다.");
+
+        if (attempts >= 5) {
+          setIsLocked(true);
+          setTimeout(() => { setIsLocked(false); setLoginAttempts(0); }, 15000);
+        }
+      } else {
+        setAuthError("로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
+      }
     }
     setIsLoading(false);
   };

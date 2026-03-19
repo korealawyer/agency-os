@@ -1,0 +1,569 @@
+{
+  "env": "LOCAL",
+  "base": "http://localhost:3000",
+  "passed": 76,
+  "failed": 4,
+  "total": 80,
+  "results": [
+    {
+      "cat": "1.인증",
+      "sub": "로그인",
+      "item": "1-01 로그인 폼 렌더링",
+      "ok": true,
+      "detail": "이메일 입력창"
+    },
+    {
+      "cat": "1.인증",
+      "sub": "로그인",
+      "item": "1-02 비밀번호 입력창",
+      "ok": true,
+      "detail": "비밀번호 입력창"
+    },
+    {
+      "cat": "1.인증",
+      "sub": "로그인",
+      "item": "1-03 로그인 버튼",
+      "ok": true,
+      "detail": "제출 버튼"
+    },
+    {
+      "cat": "1.인증",
+      "sub": "로그인",
+      "item": "1-04 정상 로그인→대시보드",
+      "ok": true,
+      "detail": "http://localhost:3000/dashboard"
+    },
+    {
+      "cat": "1.인증",
+      "sub": "세션",
+      "item": "1-10 JWT 세션 유지",
+      "ok": true,
+      "detail": "새로고침 후 세션 유지"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "KPI",
+      "item": "2-01 총 광고비",
+      "ok": true,
+      "detail": "₩ 금액"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "KPI",
+      "item": "2-02 평균 ROAS",
+      "ok": true,
+      "detail": "ROAS 지표"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "KPI",
+      "item": "2-03 노출수",
+      "ok": true,
+      "detail": "노출 지표"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "KPI",
+      "item": "2-04 전환수",
+      "ok": true,
+      "detail": "전환 지표"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "KPI",
+      "item": "2-05 총 클릭수",
+      "ok": true,
+      "detail": "클릭 지표"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "KPI",
+      "item": "2-06 키워드",
+      "ok": true,
+      "detail": "키워드 지표"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "UI",
+      "item": "2-08 DateRangePicker",
+      "ok": true,
+      "detail": "날짜 선택기"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "UI",
+      "item": "2-09 검색창",
+      "ok": true,
+      "detail": "검색 입력창"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "UI",
+      "item": "2-10 알림 벨",
+      "ok": true,
+      "detail": "알림 버튼"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "AI",
+      "item": "2-14 AI 추천 섹션",
+      "ok": true,
+      "detail": "AI 추천 액션"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "차트",
+      "item": "2-20 ROAS 차트",
+      "ok": false,
+      "detail": "recharts SVG"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "차트",
+      "item": "2-22 히트맵",
+      "ok": true,
+      "detail": "히트맵 섹션"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "계정",
+      "item": "2-24 계정 테이블",
+      "ok": true,
+      "detail": "계정 데이터"
+    },
+    {
+      "cat": "2.대시보드",
+      "sub": "상태",
+      "item": "2-27 정합성 바",
+      "ok": true,
+      "detail": "하단 상태 바"
+    },
+    {
+      "cat": "3.캠페인",
+      "sub": "레이아웃",
+      "item": "3-01 계정 트리",
+      "ok": true,
+      "detail": "좌측 트리"
+    },
+    {
+      "cat": "3.캠페인",
+      "sub": "탭",
+      "item": "3-05 캠페인/광고그룹 탭",
+      "ok": true,
+      "detail": "뷰 탭"
+    },
+    {
+      "cat": "3.캠페인",
+      "sub": "필터",
+      "item": "3-06 상태 필터",
+      "ok": true,
+      "detail": "상태 필터"
+    },
+    {
+      "cat": "3.캠페인",
+      "sub": "테이블",
+      "item": "3-10 캠페인 테이블",
+      "ok": true,
+      "detail": "<table> 존재"
+    },
+    {
+      "cat": "3.캠페인",
+      "sub": "테이블",
+      "item": "3-11 데이터 행",
+      "ok": true,
+      "detail": "15개 행"
+    },
+    {
+      "cat": "3.캠페인",
+      "sub": "기능",
+      "item": "3-16 캠페인 생성 버튼",
+      "ok": true,
+      "detail": "생성 버튼"
+    },
+    {
+      "cat": "4.키워드",
+      "sub": "탭",
+      "item": "4-01 키워드 탭",
+      "ok": true,
+      "detail": "키워드 뷰"
+    },
+    {
+      "cat": "4.키워드",
+      "sub": "탭",
+      "item": "4-02 순위 탭",
+      "ok": true,
+      "detail": "순위 탭"
+    },
+    {
+      "cat": "4.키워드",
+      "sub": "탭",
+      "item": "4-03 부정클릭 탭",
+      "ok": true,
+      "detail": "부정클릭 탭"
+    },
+    {
+      "cat": "4.키워드",
+      "sub": "필터",
+      "item": "4-04 검색창",
+      "ok": true,
+      "detail": "검색 입력"
+    },
+    {
+      "cat": "4.키워드",
+      "sub": "필터",
+      "item": "4-05 계정 필터",
+      "ok": true,
+      "detail": "드롭다운"
+    },
+    {
+      "cat": "4.키워드",
+      "sub": "테이블",
+      "item": "4-08 테이블",
+      "ok": true,
+      "detail": "<table> 존재"
+    },
+    {
+      "cat": "4.키워드",
+      "sub": "기능",
+      "item": "4-23 CSV 내보내기",
+      "ok": true,
+      "detail": "CSV 버튼"
+    },
+    {
+      "cat": "4.키워드",
+      "sub": "기능",
+      "item": "4-26 AI 추천",
+      "ok": true,
+      "detail": "AI 키워드 추천"
+    },
+    {
+      "cat": "4.키워드",
+      "sub": "데이터",
+      "item": "4-12 입찰가 데이터",
+      "ok": true,
+      "detail": "입찰가/CPC"
+    },
+    {
+      "cat": "5.광고소재",
+      "sub": "페이지",
+      "item": "5-01 페이지 로드",
+      "ok": true,
+      "detail": "에러 없음"
+    },
+    {
+      "cat": "5.광고소재",
+      "sub": "데이터",
+      "item": "5-02 광고 데이터",
+      "ok": true,
+      "detail": "광고 콘텐츠"
+    },
+    {
+      "cat": "5.광고소재",
+      "sub": "탭",
+      "item": "5-03 A/B 테스트",
+      "ok": true,
+      "detail": "A/B 또는 퍼널 탭"
+    },
+    {
+      "cat": "6.코파일럿",
+      "sub": "UI",
+      "item": "6-01 AI 환영 메시지",
+      "ok": true,
+      "detail": "환영 메시지"
+    },
+    {
+      "cat": "6.코파일럿",
+      "sub": "UI",
+      "item": "6-02 빠른 질문 버튼",
+      "ok": true,
+      "detail": "퀵 액션"
+    },
+    {
+      "cat": "6.코파일럿",
+      "sub": "UI",
+      "item": "6-03 입력창",
+      "ok": true,
+      "detail": "채팅 입력"
+    },
+    {
+      "cat": "6.코파일럿",
+      "sub": "UI",
+      "item": "6-04 전송 버튼",
+      "ok": true,
+      "detail": "전송 버튼"
+    },
+    {
+      "cat": "6.코파일럿",
+      "sub": "UI",
+      "item": "6-08 초기화 버튼",
+      "ok": true,
+      "detail": "초기화 버튼"
+    },
+    {
+      "cat": "6.코파일럿",
+      "sub": "UI",
+      "item": "6-11 연결 상태",
+      "ok": true,
+      "detail": "연결 상태 텍스트"
+    },
+    {
+      "cat": "6.코파일럿",
+      "sub": "채팅",
+      "item": "6-05 메시지 전송",
+      "ok": true,
+      "detail": "사용자 메시지 표시"
+    },
+    {
+      "cat": "6.코파일럿",
+      "sub": "채팅",
+      "item": "6-06 AI 응답",
+      "ok": false,
+      "detail": "응답 대기 중"
+    },
+    {
+      "cat": "7.경쟁분석",
+      "sub": "페이지",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없음 (373자)"
+    },
+    {
+      "cat": "7.경쟁분석",
+      "sub": "데이터",
+      "item": "경쟁 데이터",
+      "ok": true,
+      "detail": "\"경쟁\" 검출"
+    },
+    {
+      "cat": "7.경쟁분석",
+      "sub": "데이터",
+      "item": "차트",
+      "ok": true,
+      "detail": "시각화 요소"
+    },
+    {
+      "cat": "7.수익성",
+      "sub": "페이지",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없음 (394자)"
+    },
+    {
+      "cat": "7.수익성",
+      "sub": "데이터",
+      "item": "수익 KPI",
+      "ok": true,
+      "detail": "\"수익\" 검출"
+    },
+    {
+      "cat": "7.수익성",
+      "sub": "데이터",
+      "item": "차트",
+      "ok": true,
+      "detail": "시각화 요소"
+    },
+    {
+      "cat": "7.리포트",
+      "sub": "페이지",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없음 (174자)"
+    },
+    {
+      "cat": "7.리포트",
+      "sub": "데이터",
+      "item": "리포트 콘텐츠",
+      "ok": true,
+      "detail": "\"리포트\" 검출"
+    },
+    {
+      "cat": "7.리포트",
+      "sub": "데이터",
+      "item": "PDF/생성 버튼",
+      "ok": false,
+      "detail": "\"PDF\" 검출"
+    },
+    {
+      "cat": "7.자동화",
+      "sub": "페이지",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없음 (835자)"
+    },
+    {
+      "cat": "7.자동화",
+      "sub": "데이터",
+      "item": "자동화 규칙",
+      "ok": true,
+      "detail": "\"자동\" 검출"
+    },
+    {
+      "cat": "7.부정클릭",
+      "sub": "페이지",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없음 (331자)"
+    },
+    {
+      "cat": "7.부정클릭",
+      "sub": "데이터",
+      "item": "부정클릭",
+      "ok": true,
+      "detail": "\"부정\" 검출"
+    },
+    {
+      "cat": "7.부정클릭",
+      "sub": "데이터",
+      "item": "차단 IP",
+      "ok": true,
+      "detail": "\"차단\" 검출"
+    },
+    {
+      "cat": "8.알림",
+      "sub": "페이지",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없음 (194자)"
+    },
+    {
+      "cat": "8.알림",
+      "sub": "데이터",
+      "item": "알림 목록",
+      "ok": true,
+      "detail": "\"알림\" 검출"
+    },
+    {
+      "cat": "8.계정",
+      "sub": "페이지",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없음 (333자)"
+    },
+    {
+      "cat": "8.계정",
+      "sub": "데이터",
+      "item": "계정 관리",
+      "ok": true,
+      "detail": "\"계정\" 검출"
+    },
+    {
+      "cat": "8.계정",
+      "sub": "데이터",
+      "item": "연결 상태",
+      "ok": true,
+      "detail": "\"연결\" 검출"
+    },
+    {
+      "cat": "8.설정",
+      "sub": "페이지",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없음 (201자)"
+    },
+    {
+      "cat": "8.설정",
+      "sub": "데이터",
+      "item": "설정 항목",
+      "ok": true,
+      "detail": "\"설정\" 검출"
+    },
+    {
+      "cat": "8.감사로그",
+      "sub": "페이지",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없음 (361자)"
+    },
+    {
+      "cat": "8.감사로그",
+      "sub": "데이터",
+      "item": "감사 로그",
+      "ok": true,
+      "detail": "\"감사\" 검출"
+    },
+    {
+      "cat": "7.시뮬레이터",
+      "sub": "페이지",
+      "item": "페이지 로드",
+      "ok": true,
+      "detail": "에러 없음 (602자)"
+    },
+    {
+      "cat": "7.시뮬레이터",
+      "sub": "데이터",
+      "item": "시뮬레이터",
+      "ok": true,
+      "detail": "\"시뮬\" 검출"
+    },
+    {
+      "cat": "9.마케팅",
+      "sub": "페이지",
+      "item": "랜딩 페이지",
+      "ok": true,
+      "detail": "2052자"
+    },
+    {
+      "cat": "9.마케팅",
+      "sub": "페이지",
+      "item": "요금제 페이지",
+      "ok": true,
+      "detail": "1118자"
+    },
+    {
+      "cat": "10.API",
+      "sub": "endpoint",
+      "item": "Health API",
+      "ok": true,
+      "detail": "{\"status\":\"healthy\",\"timestamp\":\"2026-03-18T15:58:52.636Z\",\"latency\":\"18ms\",\"che"
+    },
+    {
+      "cat": "10.API",
+      "sub": "endpoint",
+      "item": "Auth Session",
+      "ok": true,
+      "detail": "{\"user\":{\"name\":\"Admin\",\"email\":\"admin@agency.com\",\"id\":\"user-owner-001\",\"role\":"
+    },
+    {
+      "cat": "10.API",
+      "sub": "endpoint",
+      "item": "Dashboard API",
+      "ok": false,
+      "detail": "TIMEOUT"
+    },
+    {
+      "cat": "10.API",
+      "sub": "endpoint",
+      "item": "Campaigns API",
+      "ok": true,
+      "detail": "{\"data\":[{\"id\":\"a5d1c138-4208-467f-9d01-b6cf4b070cd7\",\"name\":\"!!!로비스Mo\",\"status\""
+    },
+    {
+      "cat": "10.API",
+      "sub": "endpoint",
+      "item": "Keywords API",
+      "ok": true,
+      "detail": "{\"data\":[{\"id\":\"865f8085-8696-4183-bae2-576135987f05\",\"keywordText\":\"전화상담로비스\",\"c"
+    },
+    {
+      "cat": "10.API",
+      "sub": "endpoint",
+      "item": "Notifications API",
+      "ok": true,
+      "detail": "{\"data\":[],\"pagination\":{\"total\":0,\"page\":1,\"limit\":20,\"totalPages\":0,\"hasNext\":"
+    },
+    {
+      "cat": "10.API",
+      "sub": "endpoint",
+      "item": "Accounts API",
+      "ok": true,
+      "detail": "{\"data\":[{\"id\":\"421a952a-dace-4ebc-ac45-9b4f97a8e912\",\"customerId\":\"781299\",\"cus"
+    },
+    {
+      "cat": "11.공통",
+      "sub": "UI",
+      "item": "사이드바 메뉴",
+      "ok": true,
+      "detail": "주요 메뉴 항목"
+    }
+  ]
+}

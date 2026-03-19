@@ -118,7 +118,7 @@ export const PUT = withErrorHandler(async (req: NextRequest, { params }: { param
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const user = await requireAuth(req);
-  requireRole(user, 'owner', 'admin');
+  requireRole(user, 'owner', 'admin', 'editor');
   const { id } = await params;
 
   const existing = await prisma.keyword.findFirst({
