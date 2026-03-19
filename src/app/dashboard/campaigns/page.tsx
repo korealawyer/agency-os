@@ -302,6 +302,10 @@ function AdManagerContent() {
       adGroupId: a.adGroupId, adGroupName: a.adGroup?.name || "",
       displayUrl: a.displayUrl || "", landingUrl: a.landingUrl || "",
       isActive: a.isActive !== false,
+      status: (a.isActive !== false ? "active" : "paused"),
+      impressions: Number(a.impressions ?? 0), clicks: Number(a.clicks ?? 0),
+      ctr: Number(a.ctr ?? 0), conversions: Number(a.conversions ?? 0),
+      cost: Number(a.cost ?? 0),
     }));
   }, [selection, apiSelectedAds]);
 
