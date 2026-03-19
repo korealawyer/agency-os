@@ -204,6 +204,13 @@ export async function syncAdGroupDetails(
     for (const naverAd of naverAds) {
       // 네이버 소재 응답: { nccAdId, ad: { headline, description, pc: { final }, mobile: { final } } }
       const adData = naverAd.ad ?? {};
+      // 다양한 네이버 소재 타입의 제목 필드 매핑
+      const adTitle = adData.headline ?? adData.subject ?? adData.headline01
+        ?? adData.headline02 ?? naverAd.headline ?? naverAd.subject
+        ?? adData.pc?.final ?? naverAd.nccAdId ?? null;
+      const adDesc = adData.description ?? adData.description01
+        ?? naverAd.description ?? null;
+
       const existingAd = await prisma.ad.findFirst({
         where: { naverAdId: naverAd.nccAdId, adGroupId: adGroup.id },
         select: { id: true },
@@ -212,8 +219,8 @@ export async function syncAdGroupDetails(
       await prisma.ad.upsert({
         where: { id: existingAd?.id ?? 'new' },
         update: {
-          title: adData.headline ?? adData.subject ?? null,
-          description: adData.description ?? null,
+          title: adTitle,
+          description: adDesc,
           displayUrl: adData.pc?.display ?? adData.mobile?.display ?? null,
           landingUrl: adData.pc?.final ?? adData.mobile?.final ?? null,
           isActive: naverAd.userLock !== true,
@@ -223,8 +230,8 @@ export async function syncAdGroupDetails(
           adGroupId: adGroup.id,
           organizationId,
           naverAdId: naverAd.nccAdId,
-          title: adData.headline ?? adData.subject ?? null,
-          description: adData.description ?? null,
+          title: adTitle,
+          description: adDesc,
           displayUrl: adData.pc?.display ?? adData.mobile?.display ?? null,
           landingUrl: adData.pc?.final ?? adData.mobile?.final ?? null,
           isActive: naverAd.userLock !== true,

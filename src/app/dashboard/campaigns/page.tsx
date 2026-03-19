@@ -298,7 +298,8 @@ function AdManagerContent() {
   const detailAds = useMemo(() => {
     if (selection.type !== "adgroup" || !apiSelectedAds) return [];
     return (Array.isArray(apiSelectedAds) ? apiSelectedAds : []).map((a: any) => ({
-      id: a.id, title: a.title || "", description: a.description || "",
+      id: a.id, title: a.title || a.naverAdId || a.displayUrl || "(제목 없음)",
+      description: a.description || a.landingUrl || "",
       adGroupId: a.adGroupId, adGroupName: a.adGroup?.name || "",
       displayUrl: a.displayUrl || "", landingUrl: a.landingUrl || "",
       isActive: a.isActive !== false,
