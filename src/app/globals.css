@@ -990,6 +990,12 @@ tbody tr:active td {
   color: var(--text-muted);
 }
 
+/* select elements should not inherit width: 100% when inside flex containers */
+select.form-input {
+  width: auto;
+  min-width: 120px;
+}
+
 /* ---- Toggle ---- */
 .toggle {
   position: relative;

@@ -364,7 +364,7 @@ export default function KeywordsPage() {
             </div>
 
             {/* Filters */}
-            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+            <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center" }}>
               <div style={{ position: "relative", flex: 1 }}>
                 <Search size={16} color="var(--text-muted)" style={{ position: "absolute", left: 10, top: 10 }} />
                 <input className="form-input" placeholder="키워드 검색..." style={{ paddingLeft: 32 }} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
