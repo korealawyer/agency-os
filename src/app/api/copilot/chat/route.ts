@@ -97,11 +97,17 @@ function getContextBasedResponse(message: string, context?: any): string {
 
   const keywordCount = context?.keywordCount ?? 0;
   const accountCount = context?.accountCount ?? 0;
-  return `안녕하세요! 말씀하신 내용을 분석해보겠습니다.
+  const totalCost = context?.totalCost ?? 0;
+  const totalConversions = context?.totalConversions ?? 0;
+  const avgRoas = context?.avgRoas ? (context.avgRoas * 100).toFixed(0) + '%' : '데이터 없음';
+  return `안녕하세요! 실제 계정 데이터를 분석해보겠습니다.
 
-📊 **현재 계정 현황:**
+📊 **현재 계정 현황 (실 DB)**
 - 총 계정: ${accountCount}개
 - 총 키워드: ${keywordCount}개
+- 총 광고비: ₩${totalCost.toLocaleString('ko-KR')}
+- 총 전환수: ${totalConversions}건
+- 평균 ROAS: ${avgRoas}
 
 더 구체적인 분석이 필요하시면:
 - "성과 요약해줘"
@@ -131,33 +137,59 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   // 실 데이터 컨텍스트 수집
   let context: any = {};
   try {
-    const [keywordCount, accountCount, recentKeywords] = await Promise.all([
+    const [keywordCount, accountCount, recentKeywords, accounts, perfAgg] = await Promise.all([
       prisma.keyword.count({ where: { organizationId: user.organizationId, deletedAt: null } }),
       prisma.naverAccount.count({ where: { organizationId: user.organizationId, deletedAt: null } }),
       prisma.keyword.findMany({
         where: { organizationId: user.organizationId, deletedAt: null },
         orderBy: { cost: 'desc' },
         take: 10,
-        select: { keywordText: true, currentBid: true, ctr: true, conversions: true, cost: true },
+        select: { keywordText: true, currentBid: true, ctr: true, conversions: true, cost: true, roas: true },
+      }),
+      prisma.naverAccount.findMany({
+        where: { organizationId: user.organizationId, deletedAt: null },
+        select: { customerName: true, monthlySpend: true, connectionStatus: true },
+        take: 10,
+      }),
+      prisma.keyword.aggregate({
+        where: { organizationId: user.organizationId, deletedAt: null },
+        _sum: { cost: true, conversions: true, clicks: true, impressions: true },
+        _avg: { roas: true, ctr: true },
       }),
     ]);
-    context = { keywordCount, accountCount, recentKeywords };
+    const totalCost = Number(perfAgg._sum.cost ?? 0);
+    const totalConversions = Number(perfAgg._sum.conversions ?? 0);
+    const totalClicks = Number(perfAgg._sum.clicks ?? 0);
+    const totalImpressions = Number(perfAgg._sum.impressions ?? 0);
+    const avgRoas = Number(perfAgg._avg.roas ?? 0);
+    const avgCtr = Number(perfAgg._avg.ctr ?? 0);
+    context = { keywordCount, accountCount, recentKeywords, accounts, totalCost, totalConversions, totalClicks, totalImpressions, avgRoas, avgCtr };
   } catch {
     // DB 미연결 시 빈 컨텍스트
   }
 
   // 공통 시스템 프롬프트 (실시간 계정 데이터 포함)
   const systemPrompt = `당신은 네이버 검색광고 전문 AI 어시스턴트입니다.
-사용자의 광고 계정 데이터를 기반으로 분석하고 최적화를 제안합니다.
+사용자의 실제 광고 계정 데이터를 기반으로만 분석하고 최적화를 제안합니다.
 한국어로 응답하며, 마크다운 테이블과 이모지를 활용하여 가독성 높은 응답을 생성합니다.
+절대로 가상의 데이터나 예시 수치를 사용하지 마세요. 데이터가 없으면 없다고 안내하세요.
 
-[현재 계정 상태]
+[현재 계정 현황]
+- 연결 계정 수: ${context.accountCount ?? 0}개
 - 총 키워드: ${context.keywordCount ?? 0}개
-- 총 계정: ${context.accountCount ?? 0}개
+${context.accounts?.length ? `- 계정 목록: ${context.accounts.map((a: any) => `${a.customerName}(${a.connectionStatus})`).join(', ')}` : ''}
+
+[누적 성과 합계]
+- 총 광고비: ₩${(context.totalCost ?? 0).toLocaleString('ko-KR')}
+- 총 전환수: ${context.totalConversions ?? 0}건
+- 총 클릭수: ${context.totalClicks ?? 0}회
+- 총 노출수: ${context.totalImpressions ?? 0}회
+- 평균 ROAS: ${context.avgRoas ? (context.avgRoas * 100).toFixed(0) + '%' : '데이터 없음'}
+- 평균 CTR: ${context.avgCtr ? (context.avgCtr * 100).toFixed(2) + '%' : '데이터 없음'}
 ${context.recentKeywords?.length ? `
-[상위 키워드 (비용 기준 TOP 10)]
-${context.recentKeywords.map((k: any) => `- ${k.keywordText}: 입찰가 ₩${k.currentBid}, CTR ${(Number(k.ctr) * 100).toFixed(1)}%, 전환 ${k.conversions}건`).join('\n')}
-` : ''}`;
+[비용 상위 키워드 TOP 10]
+${context.recentKeywords.map((k: any, i: number) => `${i + 1}. ${k.keywordText}: 입찰가 ₩${k.currentBid}, 비용 ₩${Number(k.cost).toLocaleString()}, CTR ${(Number(k.ctr) * 100).toFixed(1)}%, 전환 ${k.conversions}건, ROAS ${k.roas ? (Number(k.roas) * 100).toFixed(0) + '%' : '-'}`).join('\n')}
+` : '\n[키워드 데이터 없음 - 계정 동기화가 필요합니다]'}`;
 
   let aiResponse: string;
 
