@@ -202,7 +202,12 @@ export default function ReportsPage() {
               <table>
                 <thead><tr><th>리포트</th><th>발송일</th><th>상태</th><th>수신자</th><th>열람</th><th></th></tr></thead>
                 <tbody>
-                  {recentReports.map((r) => (
+                  {recentReports.length === 0 ? (
+                    <tr><td colSpan={6} style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)", fontSize: "0.929rem" }}>
+                      <Clock size={32} color="var(--border)" style={{ marginBottom: 12, display: "block", margin: "0 auto 12px" }} />
+                      발송된 리포트가 없습니다
+                    </td></tr>
+                  ) : recentReports.map((r) => (
                     <tr key={r.id}>
                       <td style={{ fontWeight: 600 }}>{r.title}</td>
                       <td style={{ color: "var(--text-secondary)", fontSize: "0.857rem" }}>{r.date}</td>
@@ -222,6 +227,14 @@ export default function ReportsPage() {
           <div className="card">
             <div className="card-header"><h3>⏰ 자동 발송 설정</h3></div>
             <div className="card-body">
+              {templates.length === 0 && (
+                <div style={{ padding: "40px 0", textAlign: "center", color: "var(--text-muted)", fontSize: "0.929rem" }}>
+                  <Calendar size={32} color="var(--border)" style={{ marginBottom: 12 }} />
+                  <div>자동 발송 스케줄이 없습니다</div>
+                  <div style={{ fontSize: "0.786rem", marginTop: 4 }}>새 리포트를 생성하면 자동 발송을 설정할 수 있습니다</div>
+                  <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => setShowCreateModal(true)}>리포트 생성하기</button>
+                </div>
+              )}
               {templates.map((t) => (
                 <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0", borderBottom: "1px solid var(--border)" }}>
                   <div>
@@ -292,7 +305,7 @@ export default function ReportsPage() {
               <button className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>취소</button>
               <button className="btn btn-primary" onClick={() => {
                 if (!newReportName.trim()) { addToast("error", "리포트 제목을 입력해주세요"); return; }
-                const newId = Math.max(...templates.map((t) => t.id)) + 1;
+                const newId = (templates.length > 0 ? Math.max(...templates.map((t) => t.id)) : 0) + 1;
                 setTemplates((prev) => [...prev, {
                   id: newId, name: newReportName, schedule: newReportSchedule,
                   accounts: 6, recipients: 1, lastSent: "-", status: "active",

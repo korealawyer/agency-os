@@ -15,6 +15,20 @@ type ViewTab = "keywords" | "rank" | "fraud";
 
 type KeywordItem = { id: number; text: string; group: string; campaign: string; account: string; bid: number; rank: number; strategy: string; qi: number; impressions: number; clicks: number; ctr: number; cpc: number; conversions: number; cost: number; trend: string };
 
+type BidRecommendation = {
+  keywordId: string;
+  keyword: string;
+  campaign: string;
+  adGroup: string;
+  currentBid: number;
+  suggestedBid: number;
+  action: 'decrease' | 'increase' | 'pause' | 'hold';
+  reason: string;
+  urgency: 'high' | 'medium' | 'low';
+  metrics: { cost: string; clicks: number; conversions: number; ctrPct: string; estimatedRoas: string };
+};
+
+
 const aiRecommendedKeywords = [
   { text: "교통사고변호사", searchVol: 8200, competition: "낮음", estCpc: 680, estConv: 6 },
   { text: "상속변호사", searchVol: 5400, competition: "보통", estCpc: 850, estConv: 4 },
@@ -47,10 +61,10 @@ const allColumns = [
   { key: "rank", label: "순위", default: true },
   { key: "strategy", label: "전략", default: true },
   { key: "qi", label: "품질", default: false },
-  { key: "impressions", label: "노출", default: false },
-  { key: "clicks", label: "클릭", default: false },
-  { key: "ctr", label: "CTR", default: false },
-  { key: "cpc", label: "CPC", default: false },
+  { key: "impressions", label: "노출", default: true },
+  { key: "clicks", label: "클릭", default: true },
+  { key: "ctr", label: "CTR", default: true },
+  { key: "cpc", label: "CPC", default: true },
   { key: "conversions", label: "전환", default: true },
   { key: "cost", label: "비용", default: true },
 ];
@@ -69,6 +83,9 @@ export default function KeywordsPage() {
   const [strategyFilter, setStrategyFilter] = useState("전체 전략");
   const [fraudEvents, setFraudEvents] = useState<FraudEvent[]>([]);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const [aiRecs, setAiRecs] = useState<BidRecommendation[]>([]);
+  const [aiRecsLoading, setAiRecsLoading] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
   const { addToast } = useToast();
 
   // ── API 데이터 페칭 (폴백 지원) ──
@@ -115,6 +132,22 @@ export default function KeywordsPage() {
       })) : []);
     }
   }, [apiFraudEvents]);
+
+  // AI 입찰 추천 — 모달 오픈 시 실 API 호출
+  useEffect(() => {
+    if (!showAiModal) return;
+    setAiRecsLoading(true);
+    setAiRecs([]);
+    setAiSummary(null);
+    fetch('/api/copilot/bid-recommendations')
+      .then(r => r.json())
+      .then(json => {
+        setAiRecs(json.data?.recommendations ?? []);
+        setAiSummary(json.data?.aiSummary ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setAiRecsLoading(false));
+  }, [showAiModal]);
 
   // Sorting state
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
@@ -601,50 +634,68 @@ export default function KeywordsPage() {
         )}
       </div>
 
-      {/* AI Keyword Recommendation Modal */}
+      {/* AI 입찰 최적화 추천 Modal */}
       {showAiModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "var(--bg-modal)", borderRadius: "var(--radius-xl)", padding: 32, maxWidth: 600, width: "100%", boxShadow: "var(--shadow-xl)" }}>
+          <div style={{ background: "var(--bg-modal)", borderRadius: "var(--radius-xl)", padding: 32, maxWidth: 720, width: "100%", boxShadow: "var(--shadow-xl)", maxHeight: "85vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}><Sparkles size={20} color="var(--primary)" /> AI 키워드 추천</h3>
-              <button className="btn btn-ghost btn-sm" onClick={() => { setShowAiModal(false); setAddedRecommendations(new Set()); }}><X size={18} /></button>
+              <h3 style={{ display: "flex", alignItems: "center", gap: 8 }}><Sparkles size={20} color="var(--primary)" /> AI 입찰 최적화 추천</h3>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setShowAiModal(false); setAddedRecommendations(new Set()); setAiRecs([]); setAiSummary(null); }}><X size={18} /></button>
             </div>
-            <p style={{ fontSize: "0.857rem", color: "var(--text-secondary)", marginBottom: 16 }}>기존 키워드 분석을 바탕으로 저비용 고효율 키워드를 추천합니다.</p>
+            {aiSummary && (
+              <div style={{ background: "var(--primary-light)", border: "1px solid var(--primary)", borderRadius: "var(--radius-lg)", padding: "12px 16px", marginBottom: 16, fontSize: "0.886rem", lineHeight: 1.6 }}>
+                🤖 {aiSummary}
+              </div>
+            )}
+            <p style={{ fontSize: "0.857rem", color: "var(--text-secondary)", marginBottom: 16 }}>실제 DB 키워드 성과(ROAS/CTR/전환)를 분석한 AI 입찰가 조정 추천입니다.</p>
             <div className="table-wrapper">
               <table>
-                <thead><tr><th>키워드</th><th>월 검색량</th><th>경쟁도</th><th>예상 CPC</th><th>예상 전환</th><th></th></tr></thead>
+                <thead><tr><th>키워드</th><th>예상 ROAS</th><th>CTR</th><th>현재 입찰</th><th>제안 입찰</th><th>사유</th><th></th></tr></thead>
                 <tbody>
-                  {aiRecommendedKeywords.map((rk) => (
-                    <tr key={rk.text}>
-                      <td style={{ fontWeight: 600 }}>{rk.text}</td>
-                      <td>{rk.searchVol.toLocaleString()}</td>
-                      <td><span className={`badge ${rk.competition === "낮음" ? "badge-success" : "badge-warning"}`}>{rk.competition}</span></td>
-                      <td>₩{rk.estCpc.toLocaleString()}</td>
-                      <td style={{ fontWeight: 600 }}>{rk.estConv}건/월</td>
-                      <td>
-                        {addedRecommendations.has(rk.text) ? (
-                          <span className="badge badge-success">✅ 추가됨</span>
-                        ) : (
-                          <button className="btn btn-sm btn-primary" onClick={() => {
-                            const newId = Math.max(...keywords.map((k) => k.id)) + 1;
-                            setKeywords((prev) => [...prev, {
-                              id: newId, text: rk.text, group: "AI_추천", campaign: "", account: "",
-                              bid: rk.estCpc, rank: 0, strategy: "target_cpc", qi: 7,
-                              impressions: 0, clicks: 0, ctr: 0, cpc: rk.estCpc,
-                              conversions: 0, cost: 0, trend: "up",
-                            }]);
-                            setAddedRecommendations((prev) => new Set([...prev, rk.text]));
-                            addToast("success", "키워드 추가됨", `'${rk.text}' 키워드가 추가되었습니다.`);
-                          }}><Plus size={14} /> 추가</button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {aiRecsLoading ? (
+                    <tr><td colSpan={7} style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>🤖 AI 분석 중...</td></tr>
+                  ) : aiRecs.length === 0 ? (
+                    <tr><td colSpan={7} style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)" }}>성과 데이터가 있는 키워드가 없습니다. 먼저 계정을 동기화해주세요.</td></tr>
+                  ) : aiRecs.map((rec) => {
+                    const urgencyColor = rec.urgency === "high" ? "var(--error)" : rec.urgency === "medium" ? "var(--warning)" : "var(--success)";
+                    const bidDiff = rec.suggestedBid - rec.currentBid;
+                    return (
+                      <tr key={rec.keywordId}>
+                        <td style={{ fontWeight: 600 }}>
+                          <span style={{ display: "block" }}>{rec.keyword}</span>
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{rec.campaign}</span>
+                        </td>
+                        <td><span style={{ color: Number(rec.metrics.estimatedRoas) >= 300 ? "var(--success)" : "var(--error)" }}>{rec.metrics.estimatedRoas}%</span></td>
+                        <td>{rec.metrics.ctrPct}%</td>
+                        <td>₩{rec.currentBid.toLocaleString()}</td>
+                        <td>
+                          <span style={{ fontWeight: 600, color: bidDiff < 0 ? "var(--success)" : bidDiff > 0 ? "var(--warning)" : "var(--text-primary)" }}>
+                            ₩{rec.suggestedBid.toLocaleString()}
+                          </span>
+                          <span style={{ fontSize: "0.75rem", marginLeft: 4, color: "var(--text-muted)" }}>({bidDiff > 0 ? "+" : ""}{bidDiff})</span>
+                        </td>
+                        <td style={{ fontSize: "0.786rem", color: "var(--text-secondary)", maxWidth: 180 }}>
+                          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: urgencyColor, marginRight: 4 }} />
+                          {rec.reason}
+                        </td>
+                        <td>
+                          {addedRecommendations.has(rec.keyword) ? (
+                            <span className="badge badge-success">✅ 적용</span>
+                          ) : (
+                            <button className="btn btn-sm btn-primary" onClick={() => {
+                              setAddedRecommendations(prev => new Set([...prev, rec.keyword]));
+                              addToast("info", "입찰가 조정 검토", `'${rec.keyword}' ₩${rec.suggestedBid.toLocaleString()} 입찰가 조정 요청이 접수되었습니다.`);
+                            }}>적용</button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
             <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16, gap: 8 }}>
-              <button className="btn btn-secondary" onClick={() => { setShowAiModal(false); setAddedRecommendations(new Set()); }}>닫기</button>
+              <button className="btn btn-secondary" onClick={() => { setShowAiModal(false); setAddedRecommendations(new Set()); setAiRecs([]); setAiSummary(null); }}>닫기</button>
             </div>
           </div>
         </div>

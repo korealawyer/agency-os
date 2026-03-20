@@ -4,6 +4,8 @@ import prisma from '@/lib/db';
 import { apiResponse, requireAuth, requireRole, withErrorHandler, logAudit, NotFoundError, ConflictError, safeParseBody } from '@/lib/api-helpers';
 import { invalidateCache } from '@/lib/cache';
 import { createNaverAdsClient } from '@/lib/naver-ads-api';
+import { decrypt } from '@/lib/encryption';
+
 
 const updateBidSchema = z.object({
   newBid: z.number().int().min(70), // 네이버 최소 입찰가 70원
@@ -91,11 +93,12 @@ export const PUT = withErrorHandler(async (req: NextRequest, { params }: { param
   const naverKeywordId = existing.naverKeywordId;
   if (naverAccount?.customerId && naverAccount?.apiKeyEncrypted && naverAccount?.secretKeyEncrypted && naverKeywordId) {
     try {
-      // TODO: 운영 환경에서는 apiKeyEncrypted/secretKeyEncrypted를 복호화 후 사용
+      const apiKey = decrypt(naverAccount.apiKeyEncrypted);
+      const secretKey = decrypt(naverAccount.secretKeyEncrypted);
       const naverClient = createNaverAdsClient(
         naverAccount.customerId,
-        naverAccount.apiKeyEncrypted,   // 암호화된 키 (복호화 필요 시 decrypt() 호출)
-        naverAccount.secretKeyEncrypted,
+        apiKey,
+        secretKey,
       );
       await naverClient.updateBid(naverKeywordId, newBid);
       console.log(`[NaverAPI] 입찰가 반영 완료: keyword=${id}, naverKeywordId=${naverKeywordId}, bid=${newBid}`);

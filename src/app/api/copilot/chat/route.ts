@@ -6,6 +6,10 @@ import { copilotRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(5000),
+  history: z.array(z.object({
+    role: z.enum(['user', 'assistant']),
+    content: z.string().max(5000),
+  })).max(20).default([]),
 });
 
 // ── AI 응답 Mock 데이터 (LLM 미연동 시 폴백) ──
@@ -122,7 +126,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const user = await requireAuth(req);
   const body = await safeParseBody(req);
-  const { message } = chatSchema.parse(body);
+  const { message, history } = chatSchema.parse(body);
 
   // 실 데이터 컨텍스트 수집
   let context: any = {};
@@ -160,6 +164,11 @@ ${context.recentKeywords.map((k: any) => `- ${k.keywordText}: 입찰가 ₩${k.c
   // 1순위: Google Gemini API
   if (process.env.GEMINI_API_KEY) {
     try {
+      // 멀티턴: 이전 대화 히스토리 → Gemini contents 형식으로 변환
+      const geminiHistory = history.map(h => ({
+        role: h.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: h.content }],
+      }));
       const geminiRes = await fetch(
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
         {
@@ -167,7 +176,10 @@ ${context.recentKeywords.map((k: any) => `- ${k.keywordText}: 입찰가 ₩${k.c
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY! },
           body: JSON.stringify({
             system_instruction: { parts: [{ text: systemPrompt }] },
-            contents: [{ role: 'user', parts: [{ text: message }] }],
+            contents: [
+              ...geminiHistory,
+              { role: 'user', parts: [{ text: message }] },
+            ],
             generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
           }),
         }
@@ -186,6 +198,11 @@ ${context.recentKeywords.map((k: any) => `- ${k.keywordText}: 입찰가 ₩${k.c
   // 2순위: OpenAI API
   else if (process.env.OPENAI_API_KEY) {
     try {
+      // 멀티턴: 이전 대화 히스토리 포함
+      const openaiHistory = history.map(h => ({
+        role: h.role as 'user' | 'assistant',
+        content: h.content,
+      }));
       const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -196,6 +213,7 @@ ${context.recentKeywords.map((k: any) => `- ${k.keywordText}: 입찰가 ₩${k.c
           model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
           messages: [
             { role: 'system', content: systemPrompt },
+            ...openaiHistory,
             { role: 'user', content: message },
           ],
           temperature: 0.7,

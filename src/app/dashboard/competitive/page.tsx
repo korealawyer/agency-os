@@ -68,23 +68,33 @@ export default function CompetitivePage() {
           }}><Download size={16} /> 노출점유율 CSV</button>
         </div>
         {/* 15-D: AI Insight Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
-          {aiInsights.map((insight) => (
-            <div key={insight.id} className="card" style={{
-              padding: 20,
-              borderLeft: `4px solid ${insight.severity === "high" ? "var(--error)" : insight.severity === "medium" ? "var(--warning)" : "var(--primary)"}`
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <Sparkles size={16} color="var(--primary)" />
-                <span className={`badge ${insight.severity === "high" ? "badge-error" : insight.severity === "medium" ? "badge-warning" : "badge-info"}`}>
-                  {insight.severity === "high" ? "🔴 긴급" : insight.severity === "medium" ? "🟡 주의" : "🔵 참고"}
-                </span>
+        {aiInsights.length > 0 ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+            {aiInsights.map((insight) => (
+              <div key={insight.id} className="card" style={{
+                padding: 20,
+                borderLeft: `4px solid ${insight.severity === "high" ? "var(--error)" : insight.severity === "medium" ? "var(--warning)" : "var(--primary)"}`
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <Sparkles size={16} color="var(--primary)" />
+                  <span className={`badge ${insight.severity === "high" ? "badge-error" : insight.severity === "medium" ? "badge-warning" : "badge-info"}`}>
+                    {insight.severity === "high" ? "🔴 긴급" : insight.severity === "medium" ? "🟡 주의" : "🔵 참고"}
+                  </span>
+                </div>
+                <p style={{ fontSize: "0.857rem", color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.6 }}>{insight.text}</p>
+                <button className="btn btn-sm btn-primary">{insight.action}</button>
               </div>
-              <p style={{ fontSize: "0.857rem", color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.6 }}>{insight.text}</p>
-              <button className="btn btn-sm btn-primary">{insight.action}</button>
+            ))}
+          </div>
+        ) : (
+          <div className="card" style={{ padding: "20px 24px", marginBottom: 24, display: "flex", alignItems: "center", gap: 12 }}>
+            <Sparkles size={20} color="var(--text-muted)" />
+            <div>
+              <div style={{ fontWeight: 600, fontSize: "0.929rem" }}>AI 경쟁 인사이트</div>
+              <div style={{ fontSize: "0.857rem", color: "var(--text-muted)", marginTop: 2 }}>경쟁사 데이터가 수집되면 AI 인사이트가 표시됩니다. CSV를 임포트하거나 광고 데이터를 연동해주세요.</div>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
         <div className="grid-2">
           {/* 15-A: Keyword Overlap */}
@@ -166,7 +176,12 @@ export default function CompetitivePage() {
                 <tr><th>키워드</th><th>내 브랜드</th><th>경쟁사 A</th><th>경쟁사 B</th><th>경쟁사 C</th><th>기타</th></tr>
               </thead>
               <tbody>
-                {impressionShare.map((row) => {
+                {impressionShare.length === 0 ? (
+                  <tr><td colSpan={6} style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)", fontSize: "0.929rem" }}>
+                    <Eye size={32} color="var(--border)" style={{ marginBottom: 12, display: "block", margin: "0 auto 12px" }} />
+                    경쟁사 노출 점유율 데이터가 없습니다
+                  </td></tr>
+                ) : impressionShare.map((row) => {
                   const rest = 100 - row.mine - row.compA - row.compB - row.compC;
                   const cellStyle = (val: number) => ({
                     fontWeight: 600 as const,

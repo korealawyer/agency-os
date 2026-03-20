@@ -152,7 +152,12 @@ export default function SettingsPage() {
                   <tr><th>이름</th><th>이메일</th><th>역할</th><th>마지막 접속</th><th>상태</th><th></th></tr>
                 </thead>
                 <tbody>
-                  {members.map((m) => {
+                   {members.length === 0 ? (
+                     <tr><td colSpan={6} style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)", fontSize: "0.929rem" }}>
+                       <Users size={28} color="var(--border)" style={{ display: "block", margin: "0 auto 10px" }} />
+                       등록된 멤버가 없습니다. 멤버 초대 버튼으로 팀원을 초대해보세요.
+                     </td></tr>
+                   ) : members.map((m) => {
                     const r = roleLabels[m.role] || { label: m.role, badge: "" };
                     return (
                       <tr key={m.email}>
@@ -206,7 +211,12 @@ export default function SettingsPage() {
                 <table>
                   <thead><tr><th>일자</th><th>내역</th><th>금액</th><th>상태</th></tr></thead>
                   <tbody>
-                    {billingHistory.map((b, i) => (
+                    {billingHistory.length === 0 ? (
+                      <tr><td colSpan={4} style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)", fontSize: "0.929rem" }}>
+                        <CreditCard size={28} color="var(--border)" style={{ display: "block", margin: "0 auto 10px" }} />
+                        청구 이력이 없습니다
+                      </td></tr>
+                    ) : billingHistory.map((b, i) => (
                       <tr key={i}>
                         <td style={{ color: "var(--text-secondary)", fontSize: "0.857rem" }}>{b.date}</td>
                         <td style={{ fontWeight: 600 }}>{b.desc}</td>
@@ -268,17 +278,22 @@ export default function SettingsPage() {
                 <thead>
                   <tr><th>시간</th><th>사용자</th><th>역할</th><th>액션</th><th>대상</th></tr>
                 </thead>
-                <tbody>
-                  {activityLogs.map((log, i) => (
-                    <tr key={i}>
-                      <td style={{ color: "var(--text-secondary)", fontSize: "0.857rem", whiteSpace: "nowrap" }}>{log.time}</td>
-                      <td style={{ fontWeight: 600 }}>{log.icon} {log.user}</td>
-                      <td><span className="badge" style={{ background: "var(--surface-hover)" }}>{log.role}</span></td>
-                      <td>{log.action}</td>
-                      <td style={{ color: "var(--text-secondary)", fontSize: "0.857rem" }}>{log.target}</td>
-                    </tr>
-                  ))}
-                </tbody>
+                 <tbody>
+                   {activityLogs.length === 0 ? (
+                     <tr><td colSpan={5} style={{ textAlign: "center", padding: "32px 0", color: "var(--text-muted)", fontSize: "0.929rem" }}>
+                       <Shield size={28} color="var(--border)" style={{ display: "block", margin: "0 auto 10px" }} />
+                       활동 이력이 없습니다
+                     </td></tr>
+                   ) : activityLogs.map((log, i) => (
+                     <tr key={i}>
+                       <td style={{ color: "var(--text-secondary)", fontSize: "0.857rem", whiteSpace: "nowrap" }}>{log.time}</td>
+                       <td style={{ fontWeight: 600 }}>{log.icon} {log.user}</td>
+                       <td><span className="badge" style={{ background: "var(--surface-hover)" }}>{log.role}</span></td>
+                       <td>{log.action}</td>
+                       <td style={{ color: "var(--text-secondary)", fontSize: "0.857rem" }}>{log.target}</td>
+                     </tr>
+                   ))}
+                 </tbody>
               </table>
             </div>
             <div className="card-body" style={{ borderTop: "1px solid var(--border)" }}>

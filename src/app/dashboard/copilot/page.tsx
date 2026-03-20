@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send, Sparkles, User, Bot, Lightbulb, TrendingUp, Search, DollarSign, Shield, BarChart3, Loader2, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useAccounts } from "@/hooks/useApi";
 
 interface Message {
   id: number;
@@ -27,6 +28,8 @@ export default function CopilotPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [mounted, setMounted] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const { data: accountsData } = useAccounts(1, 100);
+  const accountCount: number = accountsData?.total ?? (Array.isArray(accountsData) ? accountsData.length : 0);
 
   useEffect(() => {
     setMounted(true);
@@ -78,12 +81,17 @@ export default function CopilotPage() {
     setInput("");
     setIsTyping(true);
 
+    // 최근 20개 메시지를 히스토리로 전달 (현재 사용자 메시지 제외)
+    const historyToSend = [...messages, userMsg]
+      .slice(-21, -1)  // 마지막 메시지(현재 사용자 입력) 제외, 최대 20개
+      .map(m => ({ role: m.role, content: m.content }));
+
     let aiResponse: string;
     try {
       const res = await fetch('/api/copilot/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, history: historyToSend }),
       });
       if (res.ok) {
         const json = await res.json();
@@ -118,8 +126,8 @@ export default function CopilotPage() {
             <Trash2 size={16} /> 초기화
           </button>
           <span style={{ fontSize: "0.786rem", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ width: 8, height: 8, background: "var(--success)", borderRadius: "50%", display: "inline-block" }} />
-            연결됨 · 6개 계정 분석 중
+            <span style={{ width: 8, height: 8, background: accountCount > 0 ? "var(--success)" : "var(--text-muted)", borderRadius: "50%", display: "inline-block" }} />
+            {accountCount > 0 ? `연결됨 · ${accountCount}개 계정 분석 중` : '계정 연결 필요'}
           </span>
         </div>
       </header>

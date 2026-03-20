@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Zap, Shield, Clock, Target, DollarSign, TrendingUp, BarChart3, AlertTriangle, CheckCircle2, X } from "lucide-react";
+import { Zap, Shield, Clock, Target, DollarSign, TrendingUp, BarChart3, AlertTriangle, CheckCircle2, X, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/Toast";
-import { useAccounts } from "@/hooks/useApi";
+import { useAccounts, useAiActions, apiMutate } from "@/hooks/useApi";
 
 type ConfirmMode = "semi" | "full" | "manual";
 
@@ -26,10 +26,14 @@ export default function AutomationPage() {
     dailyBudget: 100, bidMax: 10000, bidMin: 70, speedLimit: true,
   });
   const [selectedStrategy, setSelectedStrategy] = useState("target_rank");
+  const [isApplying, setIsApplying] = useState(false);
   const { addToast } = useToast();
   const { data: accountsData } = useAccounts(1, 100);
-  const accountNames = (accountsData ?? []).map((a: any) => a.customerName || a.name).filter(Boolean);
+  const { data: aiActionsData, mutate: mutateActions } = useAiActions(1, 30);
+  const accountsList = Array.isArray(accountsData) ? accountsData : (accountsData?.data ?? []);
+  const accountNames = accountsList.map((a: any) => a.customerName || a.name).filter(Boolean);
   const displayAccounts = accountNames.length > 0 ? accountNames : ['계정을 동기화해주세요'];
+  const dbLogs = Array.isArray(aiActionsData) ? aiActionsData : [];
 
   const handleModeChange = (mode: ConfirmMode) => {
     if (mode === "full") {
@@ -199,7 +203,38 @@ export default function AutomationPage() {
               ))}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-              <button className="btn btn-primary" onClick={() => addToast("success", "전략 적용 완료", `${strategies.find((s) => s.key === selectedStrategy)?.label} 전략이 선택된 계정에 적용되었습니다.`)}>선택 계정에 적용</button>
+              <button
+                className="btn btn-primary"
+                disabled={isApplying}
+                onClick={async () => {
+                  setIsApplying(true);
+                  const strategyLabel = strategies.find(s => s.key === selectedStrategy)?.label ?? selectedStrategy;
+                  try {
+                    await apiMutate('/api/copilot/actions', {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        actionType: 'bid_adjustment',
+                        entityType: 'automation',
+                        inputData: {
+                          strategy: selectedStrategy,
+                          confirmMode,
+                          accounts: accountNames,
+                          safetyValues,
+                        },
+                        outputData: { applied: true, strategyLabel },
+                        confidence: 0.85,
+                      }),
+                    });
+                    await mutateActions();
+                    addToast('success', '전략 적용 완료', `${strategyLabel} 전략이 선택된 계정에 적용되었습니다.`);
+                  } catch (err: any) {
+                    addToast('error', '적용 실패', err?.message ?? '서버 오류가 발생했습니다.');
+                  }
+                  setIsApplying(false);
+                }}
+              >
+                {isApplying ? <><RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> 적용 중...</> : '선택 계정에 적용'}
+              </button>
               <button className="btn btn-secondary">전체 선택</button>
               <button className="btn btn-secondary">전체 해제</button>
             </div>
@@ -262,20 +297,27 @@ export default function AutomationPage() {
           </div>
           <div className="table-wrapper">
             <table>
-              <thead><tr><th>시간</th><th>실행자</th><th>대상</th><th>조치</th><th>결과</th></tr></thead>
+              <thead><tr><th>시간</th><th>유형</th><th>전략</th><th>계정수</th><th>상태</th></tr></thead>
               <tbody>
-                {executionLogs.map((log, i) => (
-                  <tr key={i}>
-                    <td style={{ fontSize: "0.857rem", color: "var(--text-secondary)" }}>{log.time}</td>
-                    <td><span className={`badge ${log.user === "AI" ? "badge-info" : "badge-success"}`}>{log.user}</span></td>
-                    <td style={{ fontSize: "0.857rem" }}>{log.target}</td>
-                    <td style={{ fontWeight: 500 }}>{log.action}</td>
-                    <td>
-                      {log.result === "성공" ? <span className="badge badge-success"><CheckCircle2 size={12} /> 성공</span> :
-                       <span className="badge badge-warning"><AlertTriangle size={12} /> {log.result}</span>}
-                    </td>
-                  </tr>
-                ))}
+                {dbLogs.length === 0 ? (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)', fontSize: '0.929rem' }}>
+                    <Clock size={28} color="var(--border)" style={{ display: 'block', margin: '0 auto 10px' }} />
+                    아직 실행된 자동화 이력이 없습니다
+                  </td></tr>
+                ) : dbLogs.map((log: any) => {
+                  const strategyLabel = log.inputData?.strategyLabel ?? log.inputData?.strategy ?? log.actionType;
+                  const accCount = Array.isArray(log.inputData?.accounts) ? log.inputData.accounts.length : '-';
+                  const ts = new Date(log.createdAt).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                  return (
+                    <tr key={log.id}>
+                      <td style={{ fontSize: '0.857rem', color: 'var(--text-secondary)' }}>{ts}</td>
+                      <td><span className="badge badge-info">{log.isApproved ? 'AI 실행' : '대기'}</span></td>
+                      <td style={{ fontWeight: 500 }}>{strategyLabel}</td>
+                      <td>{accCount}</td>
+                      <td><span className="badge badge-success"><CheckCircle2 size={12} /> 적용됨</span></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
