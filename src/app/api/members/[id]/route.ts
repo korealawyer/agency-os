@@ -46,6 +46,10 @@ export const PUT = withErrorHandler(async (req: NextRequest, { params }: { param
   return apiResponse(updated);
 });
 
+// PATCH는 PUT과 동일 (부분 업데이트 지원)
+export const PATCH = PUT;
+
+
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const user = await requireAuth(req);
   requireRole(user, 'owner');

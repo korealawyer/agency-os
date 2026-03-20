@@ -8,15 +8,28 @@ import { Pool } from 'pg';
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 function createPrismaClient(): PrismaClient {
-  // Prisma v7: 항상 드라이버 어댑터 필요
-  const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/agency_os';
+  const connectionString = process.env.DATABASE_URL;
+
+  // [수정] Fail-fast: 환경변수 미설정 시 명확한 에러
+  if (!connectionString) {
+    throw new Error('[FATAL] DATABASE_URL 환경변수가 설정되지 않았습니다.');
+  }
+
   const pool = new Pool({
     connectionString,
-    ssl: { rejectUnauthorized: false }, // Supabase SSL — CA 인증서 적용 후 true로 전환 권장
-    max: 5, // 서버리스 인스턴스 내 동시 쿼리(Promise.all) 지원
-    idleTimeoutMillis: 20000,
-    connectionTimeoutMillis: 10000,
+    // [수정] SSL: Production에서 rejectUnauthorized: true (MITM 방어)
+    // Supabase Pooler는 자체 CA를 사용하므로 true가 안전
+    ssl: process.env.NODE_ENV === 'production'
+      ? { rejectUnauthorized: true }
+      : { rejectUnauthorized: false },
+    // [수정] 서버리스 최적화: DATABASE_URL에 ?pgbouncer=true&connection_limit=1 사용 시
+    // PgBouncer Transaction Mode가 실제 연결 풀을 관리 → max=1이 적합
+    // 단일 함수 인스턴스 내 Promise.all 병렬 쿼리를 위해 2로 설정
+    max: parseInt(process.env.DB_POOL_SIZE ?? '2', 10),
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 5000,
   });
+
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,

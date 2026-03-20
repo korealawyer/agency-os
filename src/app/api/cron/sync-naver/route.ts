@@ -1,26 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { syncAllAccounts } from '@/lib/naver-sync';
 import prisma from '@/lib/db';
+import { timingSafeEqual } from 'crypto';
 
-// Vercel Pro 최대 300초 타임아웃
+// Vercel Pro: 최대 300초 타임아웃
 export const maxDuration = 300;
 
 /**
- * POST /api/cron/sync-naver
+ * GET /api/cron/sync-naver
  * 전체 조직의 네이버 광고 계정을 일괄 동기화합니다.
- * Vercel Cron Job에서 호출 (매 1시간마다 권장)
+ * Vercel Cron Job에서 호출 (매 1시간마다)
  *
- * 보안: CRON_SECRET 헤더 검증
+ * 보안: CRON_SECRET 헤더 검증 (timingSafeEqual 타이밍 공격 방지)
  */
-export const POST = async (req: NextRequest) => {
+export const GET = async (req: NextRequest) => {
   // ──── Cron 인증 (Fail-Close) ────
   const authHeader = req.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret) {
+    console.error('[cron/sync-naver] CRON_SECRET not configured');
     return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 });
   }
-  if (authHeader !== `Bearer ${cronSecret}`) {
+
+  // [수정] timingSafeEqual로 타이밍 공격(Timing Attack) 방지
+  const provided = Buffer.from(authHeader ?? '', 'utf8');
+  const expected = Buffer.from(`Bearer ${cronSecret}`, 'utf8');
+
+  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -60,5 +67,5 @@ export const POST = async (req: NextRequest) => {
   });
 };
 
-// Vercel Cron은 GET으로 호출하므로 GET → POST 위임
-export const GET = POST;
+// Vercel Cron은 GET으로 호출
+export const POST = GET;

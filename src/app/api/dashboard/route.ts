@@ -3,44 +3,6 @@ import prisma from '@/lib/db';
 import { apiResponse, requireAuth, withErrorHandler } from '@/lib/api-helpers';
 import { cachedQuery, cacheKey } from '@/lib/cache';
 
-// ──── 기간 범위 계산 ────
-function parsePeriod(period: string) {
-  const now = new Date();
-  const endDate = new Date(now); endDate.setHours(23, 59, 59, 999);
-
-  let startDate: Date;
-  let prevEndDate: Date;
-  let prevStartDate: Date;
-
-  switch (period) {
-    case '1d':
-      startDate = new Date(now); startDate.setHours(0, 0, 0, 0);
-      prevEndDate = new Date(startDate); prevEndDate.setMilliseconds(-1);
-      prevStartDate = new Date(prevEndDate); prevStartDate.setHours(0, 0, 0, 0);
-      break;
-    case '30d':
-      startDate = new Date(now); startDate.setDate(now.getDate() - 29); startDate.setHours(0, 0, 0, 0);
-      prevEndDate = new Date(startDate); prevEndDate.setMilliseconds(-1);
-      prevStartDate = new Date(prevEndDate); prevStartDate.setDate(prevEndDate.getDate() - 29); prevStartDate.setHours(0, 0, 0, 0);
-      break;
-    case '90d':
-      startDate = new Date(now); startDate.setDate(now.getDate() - 89); startDate.setHours(0, 0, 0, 0);
-      prevEndDate = new Date(startDate); prevEndDate.setMilliseconds(-1);
-      prevStartDate = new Date(prevEndDate); prevStartDate.setDate(prevEndDate.getDate() - 89); prevStartDate.setHours(0, 0, 0, 0);
-      break;
-    default: // 7d
-      startDate = new Date(now); startDate.setDate(now.getDate() - 6); startDate.setHours(0, 0, 0, 0);
-      prevEndDate = new Date(startDate); prevEndDate.setMilliseconds(-1);
-      prevStartDate = new Date(prevEndDate); prevStartDate.setDate(prevEndDate.getDate() - 6); prevStartDate.setHours(0, 0, 0, 0);
-      break;
-  }
-
-  return {
-    current: { start: startDate, end: endDate },
-    previous: { start: prevStartDate, end: prevEndDate },
-  };
-}
-
 // ──── 증감률 계산 ────
 function calcChange(current: number, previous: number): string {
   if (previous === 0) return current > 0 ? '+∞' : '0%';
@@ -48,13 +10,31 @@ function calcChange(current: number, previous: number): string {
   return `${Number(pct) > 0 ? '+' : ''}${pct}%`;
 }
 
-// ──── 기간 별 KPI 집계 ────
+// ──── KPI 집계 (Campaign 테이블 기준 — lastSyncAt으로 기간 필터) ────
+// 스키마에 날짜별 성과 테이블이 없으므로 Campaign/Keyword 누적값을 사용.
+// lastSyncAt을 기준으로 해당 기간에 동기화된 데이터를 집계.
 async function getKpiForRange(orgId: string, start: Date, end: Date) {
-  const agg = await prisma.keyword.aggregate({
+  // Campaign 레벨 집계 (impressions, clicks, conversions, totalCost)
+  const campAgg = await prisma.campaign.aggregate({
     where: {
       organizationId: orgId,
       deletedAt: null,
-      updatedAt: { gte: start, lte: end },
+      lastSyncAt: { gte: start, lte: end },
+    },
+    _sum: {
+      impressions: true,
+      clicks: true,
+      conversions: true,
+      totalCost: true,
+    },
+  });
+
+  // Keyword 레벨 집계 (전환 가치 + cost 더 세밀하게)
+  const kwAgg = await prisma.keyword.aggregate({
+    where: {
+      organizationId: orgId,
+      deletedAt: null,
+      lastSyncAt: { gte: start, lte: end },
     },
     _sum: {
       impressions: true,
@@ -64,12 +44,52 @@ async function getKpiForRange(orgId: string, start: Date, end: Date) {
       cost: true,
     },
   });
+
+  // Campaign에서 가져온 값이 있으면 우선, 없으면 Keyword 집계값 사용
+  const campImpressions = Number(campAgg._sum.impressions ?? 0);
+  const campClicks = Number(campAgg._sum.clicks ?? 0);
+  const campConversions = Number(campAgg._sum.conversions ?? 0);
+  const campCost = Number(campAgg._sum.totalCost ?? 0);
+
+  const kwImpressions = Number(kwAgg._sum.impressions ?? 0);
+  const kwClicks = Number(kwAgg._sum.clicks ?? 0);
+  const kwConversions = Number(kwAgg._sum.conversions ?? 0);
+  const kwCost = Number(kwAgg._sum.cost ?? 0);
+  const kwConversionValue = Number(kwAgg._sum.conversionValue ?? 0);
+
+  const totalImpressions = campImpressions > 0 ? campImpressions : kwImpressions;
+  const totalClicks = campClicks > 0 ? campClicks : kwClicks;
+  const totalConversions = campConversions > 0 ? campConversions : kwConversions;
+  const totalCost = campCost > 0 ? campCost : kwCost;
+  const totalConversionValue = kwConversionValue;
+
+  return { totalImpressions, totalClicks, totalConversions, totalConversionValue, totalCost };
+}
+
+// ──── 전체 누적 KPI (필터 없음 — 동기화 미완료 시 폴백) ────
+async function getTotalKpi(orgId: string) {
+  const [campAgg, kwAgg] = await Promise.all([
+    prisma.campaign.aggregate({
+      where: { organizationId: orgId, deletedAt: null },
+      _sum: { impressions: true, clicks: true, conversions: true, totalCost: true },
+    }),
+    prisma.keyword.aggregate({
+      where: { organizationId: orgId, deletedAt: null },
+      _sum: { impressions: true, clicks: true, conversions: true, conversionValue: true, cost: true },
+    }),
+  ]);
+
+  const campImpressions = Number(campAgg._sum.impressions ?? 0);
+  const campClicks = Number(campAgg._sum.clicks ?? 0);
+  const campConversions = Number(campAgg._sum.conversions ?? 0);
+  const campCost = Number(campAgg._sum.totalCost ?? 0);
+
   return {
-    totalImpressions: Number(agg._sum.impressions ?? 0),
-    totalClicks: Number(agg._sum.clicks ?? 0),
-    totalConversions: Number(agg._sum.conversions ?? 0),
-    totalConversionValue: Number(agg._sum.conversionValue ?? 0),
-    totalCost: Number(agg._sum.cost ?? 0),
+    totalImpressions: campImpressions > 0 ? campImpressions : Number(kwAgg._sum.impressions ?? 0),
+    totalClicks: campClicks > 0 ? campClicks : Number(kwAgg._sum.clicks ?? 0),
+    totalConversions: campConversions > 0 ? campConversions : Number(kwAgg._sum.conversions ?? 0),
+    totalConversionValue: Number(kwAgg._sum.conversionValue ?? 0),
+    totalCost: campCost > 0 ? campCost : Number(kwAgg._sum.cost ?? 0),
   };
 }
 
@@ -77,7 +97,15 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const user = await requireAuth(req);
   const orgId = user.organizationId;
   const period = req.nextUrl.searchParams.get('period') || '7d';
-  const { current, previous } = parsePeriod(period);
+
+  // 기간 계산
+  const now = new Date();
+  const daysMap: Record<string, number> = { '1d': 1, '7d': 7, '30d': 30, '90d': 90 };
+  const days = daysMap[period] ?? 7;
+  const currentStart = new Date(now); currentStart.setDate(now.getDate() - (days - 1)); currentStart.setHours(0, 0, 0, 0);
+  const currentEnd = new Date(now); currentEnd.setHours(23, 59, 59, 999);
+  const prevEnd = new Date(currentStart); prevEnd.setMilliseconds(-1);
+  const prevStart = new Date(prevEnd); prevStart.setDate(prevEnd.getDate() - (days - 1)); prevStart.setHours(0, 0, 0, 0);
 
   const dashboard = await cachedQuery(
     cacheKey(orgId, 'dashboard', period),
@@ -89,8 +117,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
         keywordCount,
         unreadNotifications,
         recentAuditLogs,
-        currentKpi,
-        previousKpi,
+        currentKpiBySync,
+        previousKpiBySync,
+        totalKpi,
       ] = await Promise.all([
         prisma.naverAccount.count({
           where: { organizationId: orgId, deletedAt: null, isActive: true },
@@ -117,11 +146,16 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
             user: { select: { name: true } },
           },
         }),
-        getKpiForRange(orgId, current.start, current.end),
-        getKpiForRange(orgId, previous.start, previous.end),
+        getKpiForRange(orgId, currentStart, currentEnd),
+        getKpiForRange(orgId, prevStart, prevEnd),
+        getTotalKpi(orgId),
       ]);
 
-      // ROAS 계산: (전환 가치 / 비용) * 100
+      // lastSyncAt 기준 데이터가 없으면 전체 누적값 사용 (폴백)
+      const currentKpi = currentKpiBySync.totalCost > 0 ? currentKpiBySync : totalKpi;
+      const previousKpi = previousKpiBySync;
+
+      // ROAS 계산
       const avgRoas = currentKpi.totalCost > 0
         ? Math.round((currentKpi.totalConversionValue / currentKpi.totalCost) * 10000) / 100
         : 0;
@@ -141,7 +175,6 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
           totalConversionValue: currentKpi.totalConversionValue,
           totalCost: currentKpi.totalCost,
           avgRoas,
-          // ── 증감률 (WoW / DoD) ──
           totalCostChange: calcChange(currentKpi.totalCost, previousKpi.totalCost),
           totalImpressionsChange: calcChange(currentKpi.totalImpressions, previousKpi.totalImpressions),
           totalClicksChange: calcChange(currentKpi.totalClicks, previousKpi.totalClicks),

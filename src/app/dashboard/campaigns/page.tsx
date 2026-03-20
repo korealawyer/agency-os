@@ -301,8 +301,11 @@ function AdManagerContent() {
   const detailAds = useMemo(() => {
     if (selection.type !== "adgroup" || !apiSelectedAds) return [];
     return (Array.isArray(apiSelectedAds) ? apiSelectedAds : []).map((a: any) => ({
-      id: a.id, title: a.title || a.naverAdId || a.displayUrl || "(제목 없음)",
-      description: a.description || a.landingUrl || "",
+      id: a.id,
+      naverAdId: a.naverAdId || "",
+      // title이 없으면 소재 ID가 아닌 "(제목 없음)" 표시
+      title: a.title || "",
+      description: a.description || "",
       adGroupId: a.adGroupId, adGroupName: a.adGroup?.name || "",
       displayUrl: a.displayUrl || "", landingUrl: a.landingUrl || "",
       isActive: a.isActive !== false,
@@ -663,12 +666,52 @@ function AdManagerContent() {
                   {detailTab === "ads" && (
                     <div className="table-wrapper">
                       <table>
-                        <thead><tr><th style={{ width: 32 }}><input type="checkbox" /></th><th style={{ width: "30%" }}>소재</th><th>상태</th><th>노출</th><th>클릭</th><th>CTR</th><th>전환</th><th>비용</th></tr></thead>
+                        <thead>
+                          <tr>
+                            <th style={{ width: 32 }}><input type="checkbox" /></th>
+                            <th style={{ width: "35%" }}>소재 (제목 / 설명)</th>
+                            <th>표시 URL</th>
+                            <th>연결 URL</th>
+                            <th>상태</th>
+                            <th>노출</th>
+                            <th>클릭</th>
+                            <th>CTR</th>
+                            <th>전환</th>
+                            <th>비용</th>
+                          </tr>
+                        </thead>
                         <tbody>
-                          {applySearch(detailAds, "title", "description").map(ad => (
+                          {applySearch(detailAds, "title", "description", "displayUrl", "landingUrl").map(ad => (
                             <tr key={ad.id} style={{ background: selectedRows.has(ad.id) ? "var(--primary-light)" : undefined }}>
                               <td><input type="checkbox" checked={selectedRows.has(ad.id)} onChange={() => toggleRow(ad.id)} /></td>
-                              <td><div style={{ fontWeight: 600, marginBottom: 3 }}>{ad.title}</div><div style={{ fontSize: "0.786rem", color: "var(--text-secondary)" }}>{ad.description}</div></td>
+                              <td>
+                                {ad.title ? (
+                                  <div style={{ fontWeight: 600, marginBottom: 3 }}>{ad.title}</div>
+                                ) : (
+                                  <div style={{ fontWeight: 400, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 3 }}>(제목 없음)</div>
+                                )}
+                                {ad.description ? (
+                                  <div style={{ fontSize: "0.786rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>{ad.description}</div>
+                                ) : (
+                                  <div style={{ fontSize: "0.786rem", color: "var(--text-muted)", fontStyle: "italic" }}>(설명 없음)</div>
+                                )}
+                                {ad.naverAdId && (
+                                  <div style={{ fontSize: "0.714rem", color: "var(--text-muted)", marginTop: 2 }}>ID: {ad.naverAdId}</div>
+                                )}
+                              </td>
+                              <td style={{ fontSize: "0.786rem", color: "var(--text-secondary)", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {ad.displayUrl || <span style={{ color: "var(--text-muted)" }}>-</span>}
+                              </td>
+                              <td style={{ fontSize: "0.786rem", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {ad.landingUrl ? (
+                                  <a href={ad.landingUrl} target="_blank" rel="noopener noreferrer"
+                                    style={{ color: "var(--primary)", textDecoration: "none" }}
+                                    title={ad.landingUrl}
+                                    onClick={e => e.stopPropagation()}>
+                                    {ad.landingUrl.replace(/^https?:\/\//, "")}
+                                  </a>
+                                ) : <span style={{ color: "var(--text-muted)" }}>-</span>}
+                              </td>
                               <td><StatusBadge status={ad.status} /></td>
                               <td>{ad.impressions.toLocaleString()}</td>
                               <td>{ad.clicks.toLocaleString()}</td>
@@ -677,7 +720,12 @@ function AdManagerContent() {
                               <td>₩{ad.cost.toLocaleString()}</td>
                             </tr>
                           ))}
-                          {detailAds.length === 0 && <tr><td colSpan={8} style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}><Megaphone size={32} color="var(--border)" style={{ display: "block", margin: "0 auto 12px" }} />등록된 소재가 없습니다. 위 "이 그룹 동기화" 버튼을 눌러 데이터를 가져오세요.</td></tr>}
+                          {detailAds.length === 0 && (
+                            <tr><td colSpan={10} style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
+                              <Megaphone size={32} color="var(--border)" style={{ display: "block", margin: "0 auto 12px" }} />
+                              등록된 소재가 없습니다. 위 "이 그룹 동기화" 버튼을 눌러 데이터를 가져오세요.
+                            </td></tr>
+                          )}
                         </tbody>
                       </table>
                     </div>

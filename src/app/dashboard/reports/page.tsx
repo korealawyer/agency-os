@@ -1,16 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, FileText, Send, Clock, Eye, Download, Calendar, Users, CheckCircle2, XCircle, Settings, X } from "lucide-react";
+import { Plus, FileText, Send, Clock, Eye, Download, Calendar, Users, CheckCircle2, XCircle, Settings, X, Loader2 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { downloadPdf } from "@/utils/export";
 import { useReports, useReportTemplates, useAccounts, useDashboard } from "@/hooks/useApi";
+import { apiMutate, invalidateAll } from "@/hooks/useApi";
 
 type ViewTab = "templates" | "history" | "schedule";
-
-const defaultTemplates: { id: number; name: string; schedule: string; accounts: number; recipients: number; lastSent: string; status: string }[] = [];
-
-const recentReports: { id: number; title: string; date: string; status: string; sentTo: number; opened: number }[] = [];
 
 const kpiItems = [
   { key: "impressions", label: "노출수", enabled: true },
@@ -25,27 +22,88 @@ const kpiItems = [
 
 export default function ReportsPage() {
   const [viewTab, setViewTab] = useState<ViewTab>("templates");
-  const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [kpiConfig, setKpiConfig] = useState(kpiItems.map((k) => ({ ...k })));
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [kpiToggles, setKpiToggles] = useState<Record<string, boolean>>(
-    Object.fromEntries(kpiItems.map((k) => [k.key, k.enabled]))
-  );
-  const [logoFile, setLogoFile] = useState<string | null>(null);
   const [newReportName, setNewReportName] = useState("");
   const [newReportSchedule, setNewReportSchedule] = useState("weekly");
-  const [templates, setTemplates] = useState(defaultTemplates);
-  const [scheduleStates, setScheduleStates] = useState<Record<number, boolean>>(
-    Object.fromEntries(defaultTemplates.map((t) => [t.id, true]))
-  );
+  const [logoFile, setLogoFile] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const { addToast } = useToast();
+
+  // ── API 훅 ──
+  const { data: templatesRaw, isLoading: templatesLoading, mutate: mutateTemplates } = useReportTemplates();
+  const { data: reportsRaw, isLoading: reportsLoading } = useReports(1, 50);
   const { data: accountsData } = useAccounts(1, 100);
   const { data: dashboardData } = useDashboard();
+
+  const dbTemplates: any[] = Array.isArray(templatesRaw) ? templatesRaw : [];
+  const dbReports: any[] = Array.isArray(reportsRaw) ? reportsRaw : [];
   const accountNames = (accountsData ?? []).map((a: any) => a.customerName || a.name).filter(Boolean);
-  const kpiDataList = dashboardData?.kpis || [];
+  const kpiDataList = dashboardData?.kpi ?? dashboardData?.kpis ?? [];
+
+  const selectedTemplate = dbTemplates.find((t) => t.id === selectedTemplateId) ?? null;
 
   const toggleKpi = (key: string) => {
     setKpiConfig((prev) => prev.map((k) => k.key === key ? { ...k, enabled: !k.enabled } : k));
+  };
+
+  // ── 템플릿 생성 (DB 저장) ──
+  const handleCreateTemplate = async () => {
+    if (!newReportName.trim()) { addToast("error", "리포트 제목을 입력해주세요"); return; }
+    setIsSaving(true);
+    try {
+      await apiMutate("/api/reports/templates", {
+        method: "POST",
+        body: JSON.stringify({
+          name: newReportName,
+          scheduleType: newReportSchedule as "weekly" | "monthly",
+          kpiConfig: Object.fromEntries(kpiItems.map((k) => [k.key, k.enabled])),
+          recipientEmails: [],
+          naverAccountIds: [],
+        }),
+      });
+      await mutateTemplates();
+      invalidateAll("/api/reports");
+      addToast("success", "리포트 생성 완료", `'${newReportName}' 리포트가 저장되었습니다.`);
+      setNewReportName("");
+      setShowCreateModal(false);
+    } catch (e: any) {
+      addToast("error", "저장 실패", e.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ── 템플릿 삭제 ──
+  const handleDeleteTemplate = async (id: string, name: string) => {
+    setIsDeleting(id);
+    try {
+      await apiMutate(`/api/reports/templates/${id}`, { method: "DELETE" });
+      await mutateTemplates();
+      if (selectedTemplateId === id) setSelectedTemplateId(null);
+      addToast("info", "삭제 완료", `'${name}' 리포트가 삭제되었습니다.`);
+    } catch (e: any) {
+      addToast("error", "삭제 실패", e.message);
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  // ── 스케줄 토글 (DB 저장) ──
+  const handleToggleSchedule = async (template: any) => {
+    try {
+      const newSchedule = template.scheduleType ? null : "weekly";
+      await apiMutate(`/api/reports/templates/${template.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ scheduleType: newSchedule }),
+      });
+      await mutateTemplates();
+      addToast(newSchedule ? "success" : "info", `자동 발송 ${newSchedule ? "활성화" : "비활성화"}`, `'${template.name}' 자동 발송이 ${newSchedule ? "시작" : "중지"}되었습니다.`);
+    } catch (e: any) {
+      addToast("error", "변경 실패", e.message);
+    }
   };
 
   return (
@@ -70,46 +128,66 @@ export default function ReportsPage() {
             <div className="card">
               <div className="card-header"><h3 style={{ display: "flex", alignItems: "center", gap: 8 }}><FileText size={18} /> 리포트 템플릿</h3></div>
               <div className="card-body">
-                <div style={{ display: "grid", gridTemplateColumns: selectedTemplate ? "1fr" : "repeat(3, 1fr)", gap: 16 }}>
-                  {templates.map((t) => (
-                    <div
-                      key={t.id}
-                      className="card"
-                      style={{
-                        padding: 20, cursor: "pointer", transition: "all var(--transition)",
-                        border: selectedTemplate === t.id ? "2px solid var(--primary)" : "1px solid var(--border)",
-                        background: selectedTemplate === t.id ? "var(--primary-light)" : undefined,
-                      }}
-                      onClick={() => setSelectedTemplate(selectedTemplate === t.id ? null : t.id)}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-                        <strong>{t.name}</strong>
-                        <span className="badge badge-success">활성</span>
+                {templatesLoading ? (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
+                    <Loader2 size={24} style={{ animation: "spin 1s linear infinite", marginBottom: 8 }} />
+                    <div>로딩 중...</div>
+                  </div>
+                ) : dbTemplates.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)", fontSize: "0.929rem" }}>
+                    <FileText size={32} color="var(--border)" style={{ marginBottom: 12, display: "block", margin: "0 auto 12px" }} />
+                    생성된 리포트 템플릿이 없습니다<br />
+                    <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => setShowCreateModal(true)}>리포트 생성하기</button>
+                  </div>
+                ) : (
+                  <div style={{ display: "grid", gridTemplateColumns: selectedTemplate ? "1fr" : "repeat(3, 1fr)", gap: 16 }}>
+                    {dbTemplates.map((t) => (
+                      <div
+                        key={t.id}
+                        className="card"
+                        style={{
+                          padding: 20, cursor: "pointer", transition: "all var(--transition)",
+                          border: selectedTemplateId === t.id ? "2px solid var(--primary)" : "1px solid var(--border)",
+                          background: selectedTemplateId === t.id ? "var(--primary-light)" : undefined,
+                        }}
+                        onClick={() => setSelectedTemplateId(selectedTemplateId === t.id ? null : t.id)}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                          <strong>{t.name}</strong>
+                          <span className="badge badge-success">활성</span>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: "0.857rem", color: "var(--text-secondary)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Calendar size={14} /> {t.scheduleType === "weekly" ? "매주 월요일" : "매월 1일"}</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Users size={14} /> {(t.recipientEmails ?? []).length}명 수신</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}><FileText size={14} /> {(t.naverAccountIds ?? []).length}개 계정</div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={14} /> {t.updatedAt ? new Date(t.updatedAt).toLocaleDateString("ko-KR") : "-"}</div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                          <button className="btn btn-sm btn-secondary" onClick={(e) => { e.stopPropagation(); setSelectedTemplateId(t.id); }}><Eye size={14} /> 편집</button>
+                          <button
+                            className="btn btn-sm btn-ghost"
+                            style={{ color: "var(--error)" }}
+                            disabled={isDeleting === t.id}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(t.id, t.name); }}
+                          >
+                            {isDeleting === t.id ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <X size={14} />}
+                          </button>
+                        </div>
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: "0.857rem", color: "var(--text-secondary)" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Calendar size={14} /> {t.schedule === "weekly" ? "매주 월요일" : "매월 1일"}</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Users size={14} /> {t.recipients}명 수신</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><FileText size={14} /> {t.accounts}개 계정</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={14} /> {t.lastSent}</div>
-                      </div>
-                      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                        <button className="btn btn-sm btn-secondary"><Eye size={14} /> 미리보기</button>
-                        <button className="btn btn-sm btn-primary"><Send size={14} /> 즉시 발송</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* 7-B: Report Editor Panel */}
+            {/* Report Editor Panel */}
             {selectedTemplate && (
               <div className="card">
                 <div className="card-header"><h3><Settings size={18} style={{ marginRight: 8, verticalAlign: "middle" }} />리포트 편집</h3></div>
                 <div className="card-body">
                   <div className="form-group">
                     <label className="form-label">리포트 제목</label>
-                    <input className="form-input" defaultValue={templates.find((t) => t.id === selectedTemplate)?.name} />
+                    <input className="form-input" defaultValue={selectedTemplate.name} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">KPI 항목 선택</label>
@@ -138,7 +216,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">수신자 이메일</label>
-                    <input className="form-input" placeholder="이메일 주소 (쉼표로 구분)" defaultValue="client@lawfirm.com" />
+                    <input className="form-input" placeholder="이메일 주소 (쉼표로 구분)" defaultValue={(selectedTemplate.recipientEmails ?? []).join(", ")} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">로고 업로드</label>
@@ -156,21 +234,16 @@ export default function ReportsPage() {
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                  <button className="btn btn-primary" onClick={() => addToast("success", "리포트 생성 완료", "리포트가 성공적으로 생성되었습니다.")}><Send size={14} /> 리포트 생성</button>
+                    <button className="btn btn-primary" onClick={() => addToast("success", "리포트 생성 완료", "리포트가 성공적으로 생성되었습니다.")}><Send size={14} /> 리포트 생성</button>
                     <button className="btn btn-secondary" onClick={() => {
-                      const templateName = templates.find((t) => t.id === selectedTemplate)?.name || "리포트";
-                      const activeKpis = kpiItems.filter((k) => kpiToggles[k.key]);
+                      const activeKpis = kpiConfig.filter((k) => k.enabled);
                       const kpiRows = activeKpis.map((kpi) => {
-                        // 실제 대시보드 KPI 데이터와 연결 (key 기반)
-                        const matched = kpiDataList.find((d: any) => d.id === kpi.key);
-                        return [
-                          kpi.label,
-                          matched ? matched.value : "-",
-                          matched ? matched.change : "-"
-                        ];
+                        const matched = Array.isArray(kpiDataList)
+                          ? kpiDataList.find((d: any) => d.id === kpi.key)
+                          : undefined;
+                        return [kpi.label, matched ? matched.value : "-", matched ? matched.change : "-"];
                       });
-
-                      downloadPdf(`리포트_${templateName}`, `${templateName} - Agency OS`, [
+                      downloadPdf(`리포트_${selectedTemplate.name}`, `${selectedTemplate.name} - Agency OS`, [
                         ["KPI", "값", "전주 대비 변동"],
                         ...(kpiRows as string[][])
                       ]);
@@ -178,14 +251,14 @@ export default function ReportsPage() {
                     }}><Download size={14} /> PDF</button>
                   </div>
 
-                  {/* 7-C: Preview */}
+                  {/* Preview */}
                   <div style={{ marginTop: 20, padding: 16, background: "var(--surface-hover)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)" }}>
                     <div style={{ fontSize: "0.786rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: 8 }}>👁️ 미리보기</div>
                     <div style={{ fontSize: "0.857rem", lineHeight: 1.8, color: "var(--text-secondary)" }}>
-                      <strong>[{templates.find((t) => t.id === selectedTemplate)?.name}]</strong><br />
+                      <strong>[{selectedTemplate.name}]</strong><br />
                       기간: 최근 7일<br />
                       KPI: {kpiConfig.filter((k) => k.enabled).map((k) => k.label).join(", ")}<br />
-                      대상 계정: 6개 · 수신자: 2명<br />
+                      대상 계정: {accountNames.length}개 · 수신자: {(selectedTemplate.recipientEmails ?? []).length}명<br />
                       <em style={{ color: "var(--text-muted)" }}>실제 PDF 미리보기는 생성 후 확인할 수 있습니다</em>
                     </div>
                   </div>
@@ -202,18 +275,23 @@ export default function ReportsPage() {
               <table>
                 <thead><tr><th>리포트</th><th>발송일</th><th>상태</th><th>수신자</th><th>열람</th><th></th></tr></thead>
                 <tbody>
-                  {recentReports.length === 0 ? (
+                  {reportsLoading ? (
+                    <tr><td colSpan={6} style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
+                      <Loader2 size={24} style={{ animation: "spin 1s linear infinite", display: "block", margin: "0 auto 8px" }} />
+                      로딩 중...
+                    </td></tr>
+                  ) : dbReports.length === 0 ? (
                     <tr><td colSpan={6} style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)", fontSize: "0.929rem" }}>
                       <Clock size={32} color="var(--border)" style={{ marginBottom: 12, display: "block", margin: "0 auto 12px" }} />
                       발송된 리포트가 없습니다
                     </td></tr>
-                  ) : recentReports.map((r) => (
+                  ) : dbReports.map((r: any) => (
                     <tr key={r.id}>
                       <td style={{ fontWeight: 600 }}>{r.title}</td>
-                      <td style={{ color: "var(--text-secondary)", fontSize: "0.857rem" }}>{r.date}</td>
-                      <td>{r.status === "sent" ? <span className="badge badge-success"><CheckCircle2 size={12} /> 발송 완료</span> : <span className="badge badge-error"><XCircle size={12} /> 발송 실패</span>}</td>
-                      <td>{r.sentTo}명</td>
-                      <td>{r.opened}/{r.sentTo}</td>
+                      <td style={{ color: "var(--text-secondary)", fontSize: "0.857rem" }}>{r.sentAt ? new Date(r.sentAt).toLocaleDateString("ko-KR") : "-"}</td>
+                      <td>{r.sentAt ? <span className="badge badge-success"><CheckCircle2 size={12} /> 발송 완료</span> : <span className="badge badge-warning">대기</span>}</td>
+                      <td>{Array.isArray(r.sentTo) ? r.sentTo.length : 0}명</td>
+                      <td>-</td>
                       <td><button className="btn btn-ghost btn-sm"><Download size={14} /> PDF</button></td>
                     </tr>
                   ))}
@@ -227,35 +305,38 @@ export default function ReportsPage() {
           <div className="card">
             <div className="card-header"><h3>⏰ 자동 발송 설정</h3></div>
             <div className="card-body">
-              {templates.length === 0 && (
+              {templatesLoading ? (
+                <div style={{ padding: "40px 0", textAlign: "center", color: "var(--text-muted)" }}>
+                  <Loader2 size={24} style={{ animation: "spin 1s linear infinite" }} />
+                </div>
+              ) : dbTemplates.length === 0 ? (
                 <div style={{ padding: "40px 0", textAlign: "center", color: "var(--text-muted)", fontSize: "0.929rem" }}>
                   <Calendar size={32} color="var(--border)" style={{ marginBottom: 12 }} />
                   <div>자동 발송 스케줄이 없습니다</div>
                   <div style={{ fontSize: "0.786rem", marginTop: 4 }}>새 리포트를 생성하면 자동 발송을 설정할 수 있습니다</div>
                   <button className="btn btn-primary btn-sm" style={{ marginTop: 12 }} onClick={() => setShowCreateModal(true)}>리포트 생성하기</button>
                 </div>
-              )}
-              {templates.map((t) => (
+              ) : dbTemplates.map((t) => (
                 <div key={t.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0", borderBottom: "1px solid var(--border)" }}>
                   <div>
                     <strong>{t.name}</strong>
                     <div style={{ fontSize: "0.857rem", color: "var(--text-secondary)", marginTop: 4 }}>
-                      {t.schedule === "weekly" ? "매주 월요일 AM 9:00" : t.schedule === "daily" ? "매일 AM 9:00" : "매월 1일 AM 9:00"} · {t.recipients}명 수신
+                      {t.scheduleType === "weekly" ? "매주 월요일 AM 9:00" : t.scheduleType === "monthly" ? "매월 1일 AM 9:00" : "비활성"} · {(t.recipientEmails ?? []).length}명 수신
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span className={`badge ${scheduleStates[t.id] ? "badge-success" : ""}`}>{scheduleStates[t.id] ? "활성" : "비활성"}</span>
+                    <span className={`badge ${t.scheduleType ? "badge-success" : ""}`}>{t.scheduleType ? "활성" : "비활성"}</span>
                     <div
-                      onClick={() => { setScheduleStates((prev) => ({ ...prev, [t.id]: !prev[t.id] })); addToast(scheduleStates[t.id] ? "info" : "success", `자동 발송 ${scheduleStates[t.id] ? "비활성화" : "활성화"}`, `'${t.name}' 자동 발송이 ${scheduleStates[t.id] ? "중지" : "시작"}되었습니다.`); }}
+                      onClick={() => handleToggleSchedule(t)}
                       style={{
                         width: 40, height: 22, borderRadius: 12, padding: 2,
-                        background: scheduleStates[t.id] ? "var(--primary)" : "var(--border)", position: "relative", cursor: "pointer",
+                        background: t.scheduleType ? "var(--primary)" : "var(--border)", position: "relative", cursor: "pointer",
                         transition: "background 0.3s",
                       }}
                     >
                       <div style={{
                         width: 18, height: 18, borderRadius: "50%", background: "#fff",
-                        transform: scheduleStates[t.id] ? "translateX(18px)" : "translateX(0)",
+                        transform: t.scheduleType ? "translateX(18px)" : "translateX(0)",
                         transition: "transform 0.3s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
                       }} />
                     </div>
@@ -285,15 +366,6 @@ export default function ReportsPage() {
                 <select className="form-input" value={newReportSchedule} onChange={(e) => setNewReportSchedule(e.target.value)}>
                   <option value="weekly">매주 월요일</option>
                   <option value="monthly">매월 1일</option>
-                  <option value="daily">매일</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">기본 템플릿</label>
-                <select className="form-input">
-                  <option>주간 성과 보고서</option>
-                  <option>월간 종합 리포트</option>
-                  <option>공백 템플릿</option>
                 </select>
               </div>
             </div>
@@ -303,19 +375,8 @@ export default function ReportsPage() {
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
               <button className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>취소</button>
-              <button className="btn btn-primary" onClick={() => {
-                if (!newReportName.trim()) { addToast("error", "리포트 제목을 입력해주세요"); return; }
-                const newId = (templates.length > 0 ? Math.max(...templates.map((t) => t.id)) : 0) + 1;
-                setTemplates((prev) => [...prev, {
-                  id: newId, name: newReportName, schedule: newReportSchedule,
-                  accounts: 6, recipients: 1, lastSent: "-", status: "active",
-                }]);
-                setScheduleStates((prev) => ({ ...prev, [newId]: true }));
-                addToast("success", "리포트 생성 완료", `'${newReportName}' 리포트가 생성되었습니다.`);
-                setNewReportName("");
-                setShowCreateModal(false);
-              }}>
-                <Plus size={16} /> 리포트 생성
+              <button className="btn btn-primary" onClick={handleCreateTemplate} disabled={isSaving}>
+                {isSaving ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : <Plus size={16} />} 리포트 생성
               </button>
             </div>
           </div>

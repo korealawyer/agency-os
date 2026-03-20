@@ -1,11 +1,21 @@
 import { Redis } from '@upstash/redis';
 
 // ──── Redis 클라이언트 (Upstash Serverless) ────
+// [수정] 환경변수 미설정 시 앱 크래시 방지 — Graceful Degradation
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+let redis: Redis | null = null;
+
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+} else if (process.env.NODE_ENV === 'production') {
+  console.warn(
+    '[Cache] UPSTASH_REDIS 환경변수 미설정 — 캐싱 비활성화됨. ' +
+    'Rate Limiting도 동작하지 않습니다.'
+  );
+}
 
 export default redis;
 
@@ -23,6 +33,9 @@ export async function cachedQuery<T>(
   queryFn: () => Promise<T>,
   tags?: string[],
 ): Promise<T> {
+  // [수정] Redis null 안전 처리 — Redis 없으면 DB 직접 조회
+  if (!redis) return queryFn();
+
   // 1. 캐시에서 읽기
   try {
     const cached = await redis.get<T>(key);
@@ -79,6 +92,7 @@ export async function cachedQuery<T>(
 // ──── 태그 기반 캐시 무효화 ────
 
 export async function invalidateCache(tag: string) {
+  if (!redis) return; // [수정] null 안전 처리
   try {
     const keys = await redis.smembers(`tag:${tag}`);
     if (keys.length > 0) {
@@ -97,6 +111,7 @@ export async function invalidateCache(tag: string) {
 // ──── 단일 키 캐시 삭제 ────
 
 export async function deleteCache(key: string) {
+  if (!redis) return; // [수정] null 안전 처리
   try {
     await redis.del(key);
   } catch (e) {

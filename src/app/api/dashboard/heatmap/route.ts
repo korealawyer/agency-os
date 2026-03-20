@@ -55,9 +55,13 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
         matrix[key].cost += Math.abs(bh.newBid - bh.oldBid);
       }
 
-      // 키워드 집계 데이터로 히트맵 보강 (전체 성과 기반)
+      // 키워드 집계 데이터로 히트맵 보강 (해당 기간 내 업데이트 된 것만)
       const keywords = await prisma.keyword.findMany({
-        where: { organizationId: orgId, deletedAt: null },
+        where: {
+          organizationId: orgId,
+          deletedAt: null,
+          updatedAt: { gte: since },
+        },
         select: {
           impressions: true,
           clicks: true,
@@ -79,9 +83,16 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
         matrix[key].cost += Number(kw.cost ?? 0);
       }
 
+      const dayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+
+      // 실제 광고 성과 데이터가 없으면 빈 배열 반환 (프론트에서 빈 상태 표시)
+      const hasData = bidHistories.length > 0 || keywords.some(
+        (kw) => Number(kw.clicks) > 0 || Number(kw.impressions) > 0
+      );
+      if (!hasData) return { data: [], dayLabels, hasData: false };
+
       // 매트릭스를 배열로 변환
       const data = [];
-      const dayLabels = ['일', '월', '화', '수', '목', '금', '토'];
       for (let dow = 0; dow < 7; dow++) {
         for (let hour = 0; hour < 24; hour++) {
           const cell = matrix[`${dow}-${hour}`];
@@ -99,7 +110,7 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
         }
       }
 
-      return { data, dayLabels };
+      return { data, dayLabels, hasData: true };
     },
     [`heatmap:${orgId}`],
   );

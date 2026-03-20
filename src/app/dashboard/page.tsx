@@ -432,32 +432,39 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* 시간대별 성과 히트맵 */}
-          <div className="card">
-            <div className="card-header">
-              <h3>⏰ 시간대별 성과 히트맵</h3>
-              <div className="flex-center gap-2">
-                {(["clicks", "impressions", "cost", "conversions"] as const).map((m) => (
-                  <button
-                    key={m}
-                    className={`btn btn-sm ${heatmapMetric === m ? "btn-primary" : "btn-ghost"}`}
-                    onClick={() => setHeatmapMetric(m)}
-                  >
-                    {{ clicks: "클릭", impressions: "노출", cost: "비용", conversions: "전환" }[m]}
-                  </button>
-                ))}
+        </div>
+
+        {/* 시간대별 성과 히트맵 — 전체 너비 */}
+        <div className="card" style={{ marginTop: 24 }}>
+          <div className="card-header">
+            <h3>⏰ 시간대별 성과 히트맵</h3>
+            <div className="flex-center">
+              {(["clicks", "impressions", "cost", "conversions"] as const).map((m) => (
+                <button
+                  key={m}
+                  className={`btn btn-sm ${heatmapMetric === m ? "btn-primary" : "btn-ghost"}`}
+                  onClick={() => setHeatmapMetric(m)}
+                >
+                  {{ clicks: "클릭", impressions: "노출", cost: "비용", conversions: "전환" }[m]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="card-body">
+            {heatmapLoading ? (
+              <ChartSkeleton height={220} />
+            ) : !heatmapData?.data?.length || heatmapData.data.every((c: any) => c[heatmapMetric] === 0) ? (
+              <div style={{ height: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.929rem' }}>
+                <span style={{ fontSize: 32, marginBottom: 12 }}>🕐</span>
+                <div>시간대별 성과 데이터가 없습니다</div>
+                <div style={{ fontSize: '0.786rem', marginTop: 4 }}>광고 데이터가 수집되면 요일·시간대별 성과 패턴이 표시됩니다</div>
               </div>
-            </div>
-            <div className="card-body">
-              {heatmapLoading ? (
-                <ChartSkeleton height={220} />
-              ) : (
-                <HeatmapChart
-                  data={heatmapData?.data ?? []}
-                  metric={heatmapMetric}
-                />
-              )}
-            </div>
+            ) : (
+              <HeatmapChart
+                data={heatmapData?.data ?? []}
+                metric={heatmapMetric}
+              />
+            )}
           </div>
         </div>
 

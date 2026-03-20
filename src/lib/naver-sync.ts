@@ -201,15 +201,31 @@ export async function syncAdGroupDetails(
       console.warn(`[Sync Phase2] 소재 조회 실패 (${adGroup.name}):`, e.message);
     }
 
+    // 첫 소재의 구조를 로그로 출력 (필드 매핑 확인용)
+    if (naverAds.length > 0) {
+      console.log(`[Sync Phase2] 소재 샘플 구조 (${adGroup.name}):`, JSON.stringify(naverAds[0], null, 2));
+    }
+
     for (const naverAd of naverAds) {
-      // 네이버 소재 응답: { nccAdId, ad: { headline, description, pc: { final }, mobile: { final } } }
+      // 네이버 소재 응답: { nccAdId, type, ad: { headline, description, pc: { final }, mobile: { final } } }
       const adData = naverAd.ad ?? {};
-      // 다양한 네이버 소재 타입의 제목 필드 매핑
-      const adTitle = adData.headline ?? adData.subject ?? adData.headline01
-        ?? adData.headline02 ?? naverAd.headline ?? naverAd.subject
-        ?? adData.pc?.final ?? naverAd.nccAdId ?? null;
-      const adDesc = adData.description ?? adData.description01
-        ?? naverAd.description ?? null;
+      // 다양한 네이버 소재 타입의 제목 필드 매핑 (TEXT_35, TEXT_45, CATALOG 등)
+      // NOTE: 마지막 fallback을 nccAdId(소재 ID)로 쓰면 화면에 ID가 노출되므로 null 처리
+      const adTitle =
+        adData.headline ??
+        adData.headline01 ??
+        adData.headline02 ??
+        adData.subject ??
+        adData.title ??
+        naverAd.headline ??
+        naverAd.subject ??
+        null; // ID를 title로 저장하지 않음
+      const adDesc =
+        adData.description ??
+        adData.description01 ??
+        adData.description02 ??
+        naverAd.description ??
+        null;
 
       const existingAd = await prisma.ad.findFirst({
         where: { naverAdId: naverAd.nccAdId, adGroupId: adGroup.id },

@@ -55,3 +55,21 @@ tmp_*
 test_*.js
 gen_hash.*
 hash_output.*
+
+# 시크릿 임시 파일 — 절대 커밋 금지
+.env.secrets.*
+*.secrets.*
+
+# 디버그/유틸 스크립트
+check-db.js
+test-dashboard.js
+test-full.js
+test-server.js
+test-custom.js
+update_password.js
+verify-ads.js
+test-*.json
+test-*.txt
+test-*.png
+dashboard-test.png
+.env*.local
