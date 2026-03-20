@@ -12,111 +12,27 @@ const chatSchema = z.object({
   })).max(20).default([]),
 });
 
-// ── AI 응답 Mock 데이터 (LLM 미연동 시 폴백) ──
-const aiResponses: Record<string, string> = {
-  "성과": `📊 **전체 계정 성과 요약**
-
-| 지표 | 값 | 전일 대비 |
-|------|-----|----------|
-| 총 광고비 | ₩6,480,000 | +8% |
-| 평균 ROAS | 340% | +22% |
-| 총 클릭수 | 6,890 | +14% |
-| 전환수 | 68건 | +18% |
-
-**💡 추천 액션:** B 성형외과 '쌍꺼풀수술가격' 키워드 소재 A/B 테스트를 진행하시겠어요?`,
-
-  "키워드": `🔑 **AI 키워드 추천**
-
-현재 활성 키워드를 분석한 결과, 다음 키워드를 추천합니다:
-
-| 키워드 | 월 검색량 | 경쟁도 | 예상 CPC |
-|--------|----------|--------|----------|
-| 교통사고변호사 | 8,200 | 낮음 | ₩680 |
-| 상속변호사 | 5,400 | 보통 | ₩850 |
-| 임플란트비용 | 12,100 | 낮음 | ₩520 |
-
-키워드 관리 페이지에서 바로 추가하시겠어요?`,
-
-  "입찰": `💰 **입찰가 최적화 제안**
-
-ROAS 기준 하위 키워드를 분석했습니다:
-
-**1. 코성형후기** — ROAS 52% ❌
-- 현재 입찰가: ₩1,800 → 제안: ₩1,500 (-17%)
-- 예상 효과: ROAS 78%로 개선
-
-**2. 인테리어견적** — ROAS 109%
-- 현재 입찰가: ₩700 → 제안: ₩600 (-14%)
-- 예상 효과: ROAS 145%로 개선
-
-전체 적용하시겠어요?`,
-
-  "부정": `🛡️ **부정클릭 분석 보고서**
-
-최근 7일간 48,230건의 클릭 중 **2,415건(5.0%)**이 의심 클릭으로 탐지되었습니다.
-
-**🔴 고위험 IP (즉시 차단 권장):**
-- 203.xxx.xxx.12: 동일 IP에서 3회 연속 클릭 (10분 이내)
-
-**💰 예상 절감액:** ₩350,000/주
-
-키워드 관리 > 부정클릭 방지 탭에서 상세 확인 및 IP 차단이 가능합니다.`,
-
-  "경쟁": `🕵️ **경쟁사 포지션 분석**
-
-'형사변호사' 키워드 기준:
-
-| 경쟁사 | 순위 | 예상 입찰가 | 위협도 |
-|--------|------|-----------|--------|
-| 우리 | **1위** | ₩1,200 | - |
-| 법무법인 정의 | 2위 | ₩1,150 | 🟡 |
-| 한빛 법률사무소 | 3위 | ₩1,080 | 🟢 |
-
-입찰가 격차가 ₩50으로 좁혀지고 있어 주시가 필요합니다.`,
-
-  "개선": `💡 **캠페인 개선 제안 TOP 3**
-
-**1. 🔥 B 성형외과 — CTR 급락 대응**
-- 소재 A/B 테스트 진행 (새 소재 2~3개 추가)
-
-**2. 💰 C 치과의원 — 예산 조정**
-- 시간대 차등 입찰 활성화 (오후 강화)
-
-**3. 📈 E 학원 — 골든타임 활용**
-- 15~18시 입찰가 +20% 자동 설정
-
-각 제안을 실행하시겠어요?`,
-};
-
-function getContextBasedResponse(message: string, context?: any): string {
-  const msgLower = message.toLowerCase();
-
-  for (const [keyword, response] of Object.entries(aiResponses)) {
-    if (msgLower.includes(keyword)) return response;
-  }
-
+// DB 실데이터 기반 폴백 응답 (mock 수치 없음)
+function buildContextResponse(context?: any): string {
   const keywordCount = context?.keywordCount ?? 0;
   const accountCount = context?.accountCount ?? 0;
-  const totalCost = context?.totalCost ?? 0;
-  const totalConversions = context?.totalConversions ?? 0;
-  const avgRoas = context?.avgRoas ? (context.avgRoas * 100).toFixed(0) + '%' : '데이터 없음';
-  return `안녕하세요! 실제 계정 데이터를 분석해보겠습니다.
+  const totalCost = Number(context?.totalCost ?? 0);
+  const totalConversions = Number(context?.totalConversions ?? 0);
+  const avgRoas = context?.avgRoas ? (Number(context.avgRoas) * 100).toFixed(0) + '%' : '데이터 없음';
 
-📊 **현재 계정 현황 (실 DB)**
-- 총 계정: ${accountCount}개
-- 총 키워드: ${keywordCount}개
-- 총 광고비: ₩${totalCost.toLocaleString('ko-KR')}
-- 총 전환수: ${totalConversions}건
-- 평균 ROAS: ${avgRoas}
+  if (accountCount === 0) {
+    return `계정이 연결되어 있지 않습니다.📋\n\n**시작 방법:**\n1. 계정 관리 → 네이버 광고 계정 연결\n2. 편집 버튼에서 동기화\n3. 다시 코파일럿 돌아오기\n\n네이버 광고 계정 연결 후 실제 데이터를 분석해드립니다.`;
+  }
 
-더 구체적인 분석이 필요하시면:
-- "성과 요약해줘"
-- "키워드 추천해줘"
-- "입찰가 최적화 제안해줘"
-- "부정클릭 분석해줘"
+  const topKws = (context?.recentKeywords ?? []) as any[];
+  const kwList = topKws.slice(0, 5).map((k: any, i: number) =>
+    `${i + 1}. ${k.keywordText}: 입찰가 ₩${k.currentBid}, 비용 ₩${Number(k.cost).toLocaleString()}`
+  ).join('\n');
 
-위 질문을 시도해보세요!`;
+  return `📊 **현재 Agency OS 계정 현황 (실제 DB)**\n\n| 지표 | 값 |\n|------|-----|\n| 연결 계정 | ${accountCount}개 |\n| 총 키워드 | ${keywordCount}개 |\n| 누적 광고비 | ₩${totalCost.toLocaleString('ko-KR')} |\n| 누적 전환수 | ${totalConversions}건 |\n| 평균 ROAS | ${avgRoas} |\n\n${kwList ? `**비용 상위 키워드:**\n${kwList}` : '성과 데이터가 없습니다. 동기화를 먼저 실행해주세요.'}\n\n어떤 분석이 필요하신가요?\n- "성과 요약해줘" / "입찰가 최적화" / "키워드 추천"\n\n> ⚠️ AI(Gemini/GPT) API가 미설정되어 기본 응답 중입니다. 환경변수에 GEMINI_API_KEY를 설정하면 완전한 AI 응답을 받을 수 있습니다.`;
 }
+
+
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
   // ──── Rate Limiting (Upstash 미설정 시 자동 스킵) ────
@@ -278,12 +194,12 @@ ${context.recentKeywords.map((k: any, i: number) => `${i + 1}. ${k.keywordText}:
       if (geminiRes.ok) {
         const result = await geminiRes.json();
         aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text
-          || getContextBasedResponse(message, context);
+          || buildContextResponse(context);
       } else {
-        aiResponse = getContextBasedResponse(message, context);
+        aiResponse = buildContextResponse(context);
       }
     } catch {
-      aiResponse = getContextBasedResponse(message, context);
+      aiResponse = buildContextResponse(context);
     }
   }
   // 2순위: OpenAI API
@@ -314,16 +230,16 @@ ${context.recentKeywords.map((k: any, i: number) => `${i + 1}. ${k.keywordText}:
       if (openaiRes.ok) {
         const result = await openaiRes.json();
         aiResponse = result.choices?.[0]?.message?.content
-          || getContextBasedResponse(message, context);
+          || buildContextResponse(context);
       } else {
-        aiResponse = getContextBasedResponse(message, context);
+        aiResponse = buildContextResponse(context);
       }
     } catch {
-      aiResponse = getContextBasedResponse(message, context);
+      aiResponse = buildContextResponse(context);
     }
   } else {
-    // 3순위: Mock 폴백
-    aiResponse = getContextBasedResponse(message, context);
+    // LLM API 미설정 시: DB 실데이터 기반 안내
+    aiResponse = buildContextResponse(context);
   }
 
   // AI 액션 로그 저장

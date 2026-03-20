@@ -23,8 +23,10 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
     ...(actionType && { actionType }),
   };
 
-  // isApproved 필터: 'pending' = null (미결), 'true' = 승인됨, 'false' = 거부됨
-  if (isApprovedStr === 'pending') {
+  // isApproved 필터: 'pending' = null (미결), 'true' = 승인됨, 'false' = 거부됨, 'all' = 전체
+  if (isApprovedStr === 'all') {
+    // 전체 조회 — 필터 없음
+  } else if (isApprovedStr === 'pending') {
     where.isApproved = null;
   } else if (isApprovedStr !== null) {
     where.isApproved = isApprovedStr === 'true';

@@ -29,7 +29,7 @@ export default function AutomationPage() {
   const [isApplying, setIsApplying] = useState(false);
   const { addToast } = useToast();
   const { data: accountsData } = useAccounts(1, 100);
-  const { data: aiActionsData, mutate: mutateActions } = useAiActions(1, 30);
+  const { data: aiActionsData, mutate: mutateActions } = useAiActions(1, 30, 'all');
   const accountsList = Array.isArray(accountsData) ? accountsData : (accountsData?.data ?? []);
   const accountNames = accountsList.map((a: any) => a.customerName || a.name).filter(Boolean);
   const displayAccounts = accountNames.length > 0 ? accountNames : ['계정을 동기화해주세요'];

@@ -28,6 +28,8 @@ const NAV_SECTIONS = [
     defaultOpen: true,
     items: [
       { href: "/dashboard/campaigns", icon: BarChart3, label: "광고 관리" },
+      { href: "/dashboard/keywords", icon: KeyRound, label: "키워드 관리" },
+      { href: "/dashboard/ads", icon: Megaphone, label: "소재 관리" },
     ],
   },
   {

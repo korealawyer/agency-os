@@ -17,7 +17,12 @@ export default function CompetitivePage() {
   const [selectedKeyword, setSelectedKeyword] = useState("형사변호사");
   const { addToast } = useToast();
   const { data: kwData } = useKeywords(1, 1000);
-  const myKeywords = Array.isArray(kwData) ? kwData.length : 0;
+  const allKeywords = Array.isArray(kwData) ? kwData : (kwData?.data ?? []);
+  const myKeywords = allKeywords.length;
+  // 고입찰가 상위 10개 키워드
+  const topBidKws = [...allKeywords]
+    .sort((a: any, b: any) => (b.currentBid ?? 0) - (a.currentBid ?? 0))
+    .slice(0, 10);
 
   return (
     <>
@@ -92,6 +97,47 @@ export default function CompetitivePage() {
             <div>
               <div style={{ fontWeight: 600, fontSize: "0.929rem" }}>AI 경쟁 인사이트</div>
               <div style={{ fontSize: "0.857rem", color: "var(--text-muted)", marginTop: 2 }}>경쟁사 데이터가 수집되면 AI 인사이트가 표시됩니다. CSV를 임포트하거나 광고 데이터를 연동해주세요.</div>
+            </div>
+          </div>
+        )}
+
+        {/* 내 키워드 현황 — 실 DB 데이터 */}
+        {topBidKws.length > 0 && (
+          <div className="card" style={{ marginBottom: 24 }}>
+            <div className="card-header">
+              <h3>📋 내 키워드 입찰 현황 (실제 DB 데이터)</h3>
+              <span className="badge badge-info">{myKeywords}개 운영 중</span>
+            </div>
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>키워드</th>
+                    <th>현재 입찰가</th>
+                    <th>비용</th>
+                    <th>클릭</th>
+                    <th>노출</th>
+                    <th>CTR</th>
+                    <th>전환</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topBidKws.map((k: any) => (
+                    <tr key={k.id}>
+                      <td style={{ fontWeight: 600 }}>{k.keywordText}</td>
+                      <td>₩{(k.currentBid ?? 0).toLocaleString()}</td>
+                      <td>₩{Number(k.cost ?? 0).toLocaleString()}</td>
+                      <td>{(k.clicks ?? 0).toLocaleString()}</td>
+                      <td>{(k.impressions ?? 0).toLocaleString()}</td>
+                      <td>{k.ctr ? (Number(k.ctr) * 100).toFixed(1) + '%' : '-'}</td>
+                      <td>{k.conversions ?? 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ padding: '8px 16px', fontSize: '0.714rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
+              💡 경쟁사 데이터는 CSV 임포트 또는 네이버 경쟁사 리포트 API 연동 시 자동으로 표시됩니다.
             </div>
           </div>
         )}
