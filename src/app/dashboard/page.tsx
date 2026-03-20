@@ -117,13 +117,25 @@ export default function DashboardPage() {
       }))
     : [];
   const aiActions: AiAction[] = aiActionsData?.length > 0
-    ? aiActionsData.map((a: any, i: number) => ({
-        id: a.id ?? i + 1,
-        account: a.entityType ?? '',
-        title: a.actionType ?? '',
-        desc: a.outputData?.description ?? JSON.stringify(a.outputData ?? {}),
-        type: a.actionType ?? 'bid',
-      }))
+    ? aiActionsData.map((a: any, i: number) => {
+        const out = a.outputData ?? {};
+        // desc: 사람이 읽을 수 있는 텍스트만 추출 (JSON 노출 방지)
+        const desc =
+          out.description ??
+          out.message ??
+          out.summary ??
+          out.reason ??
+          (out.keyword ? `키워드: ${out.keyword}` : null) ??
+          (out.action ? `액션: ${out.action}` : null) ??
+          `${a.actionType ?? 'AI 액션'} 처리됨`;
+        return {
+          id: a.id ?? i + 1,
+          account: a.entityType ?? '',
+          title: a.actionType ?? '',
+          desc,
+          type: a.actionType ?? 'bid',
+        };
+      })
     : [];
 
   const filteredAccounts = accounts.filter((acc) =>
@@ -141,6 +153,18 @@ export default function DashboardPage() {
   const handleAction = async (id: number, action: "approved" | "rejected") => {
     setActionStates((prev) => ({ ...prev, [id]: action }));
     const item = aiActions.find((a) => a.id === id);
+    // DB에 승인/거부 상태 저장 (페이지 새로고침 후에도 유지)
+    if (typeof id === 'string' || (typeof id === 'number' && !String(id).startsWith('mock'))) {
+      try {
+        await fetch(`/api/copilot/actions/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isApproved: action === 'approved' }),
+        });
+      } catch (e) {
+        console.warn('AI action DB 업데이트 실패:', e);
+      }
+    }
     if (action === "approved") {
       addToast("success", "AI 추천 승인됨", `${item?.account} — ${item?.title}`);
     } else {

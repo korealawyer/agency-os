@@ -207,25 +207,39 @@ export async function syncAdGroupDetails(
     }
 
     for (const naverAd of naverAds) {
-      // 네이버 소재 응답: { nccAdId, type, ad: { headline, description, pc: { final }, mobile: { final } } }
+      // 네이버 소재 응답 구조 (TEXT_35, TEXT_45 등 타입별로 다름)
+      // 구조: { nccAdId, type, userLock, ad: { headline, description, ... }, headline, description }
       const adData = naverAd.ad ?? {};
-      // 다양한 네이버 소재 타입의 제목 필드 매핑 (TEXT_35, TEXT_45, CATALOG 등)
-      // NOTE: 마지막 fallback을 nccAdId(소재 ID)로 쓰면 화면에 ID가 노출되므로 null 처리
+
+      // 제목: 최상위 우선 → ad 오브젝트 내 타입별 필드 순서로 탐색
       const adTitle =
         adData.headline ??
         adData.headline01 ??
-        adData.headline02 ??
+        adData.pcTitle ??
+        adData.pcHeadline ??
         adData.subject ??
         adData.title ??
+        adData.name ??
+        // 최상위 레벨에 있는 경우
         naverAd.headline ??
         naverAd.subject ??
-        null; // ID를 title로 저장하지 않음
+        naverAd.title ??
+        null;
+
+      // 설명: 동일한 순서로 탐색
       const adDesc =
         adData.description ??
         adData.description01 ??
-        adData.description02 ??
+        adData.pcDescription ??
+        adData.text ??
+        adData.body ??
         naverAd.description ??
         null;
+
+      // 디버깅: 실제 응답 구조
+      if (!adTitle) {
+        console.log(`[Sync Phase2] 소재 응답 구조 (${naverAd.nccAdId}):`, JSON.stringify(naverAd));
+      }
 
       const existingAd = await prisma.ad.findFirst({
         where: { naverAdId: naverAd.nccAdId, adGroupId: adGroup.id },
@@ -237,8 +251,8 @@ export async function syncAdGroupDetails(
         update: {
           title: adTitle,
           description: adDesc,
-          displayUrl: adData.pc?.display ?? adData.mobile?.display ?? null,
-          landingUrl: adData.pc?.final ?? adData.mobile?.final ?? null,
+          displayUrl: adData.pc?.display ?? adData.mobile?.display ?? naverAd.displayUrl ?? null,
+          landingUrl: adData.pc?.final ?? adData.mobile?.final ?? naverAd.landingUrl ?? null,
           isActive: naverAd.userLock !== true,
           updatedAt: new Date(),
         },
@@ -248,8 +262,8 @@ export async function syncAdGroupDetails(
           naverAdId: naverAd.nccAdId,
           title: adTitle,
           description: adDesc,
-          displayUrl: adData.pc?.display ?? adData.mobile?.display ?? null,
-          landingUrl: adData.pc?.final ?? adData.mobile?.final ?? null,
+          displayUrl: adData.pc?.display ?? adData.mobile?.display ?? naverAd.displayUrl ?? null,
+          landingUrl: adData.pc?.final ?? adData.mobile?.final ?? naverAd.landingUrl ?? null,
           isActive: naverAd.userLock !== true,
         },
       });
@@ -291,6 +305,56 @@ export async function syncAdGroupDetails(
         });
         result.keywords++;
       }));
+    }
+
+    // 4. 키워드 성과 지표(stats) 동기화 — 최근 30일만제
+    if (keywords.length > 0) {
+      try {
+        const end = new Date();
+        const start = new Date(); start.setDate(end.getDate() - 30);
+        const fmt = (d: Date) => d.toISOString().slice(0, 10);
+        const kwNaverIds = keywords.map((k: any) => k.nccKeywordId).filter(Boolean);
+
+        if (kwNaverIds.length > 0) {
+          // stats API 호출 (최대 100엪 배치)
+          const STAT_BATCH = 100;
+          for (let si = 0; si < kwNaverIds.length; si += STAT_BATCH) {
+            const batchIds = kwNaverIds.slice(si, si + STAT_BATCH);
+            try {
+              const stats = await client.getKeywordStats(batchIds, fmt(start), fmt(end));
+              for (const stat of stats) {
+                const kw = await prisma.keyword.findFirst({
+                  where: { naverKeywordId: stat.id, adGroupId: adGroup.id },
+                  select: { id: true },
+                });
+                if (kw) {
+                  const cost = Number(stat.salesAmt ?? 0) || Number(stat.cost ?? 0);
+                  const clicks = Number(stat.clkCnt ?? 0);
+                  const imps = Number(stat.impCnt ?? 0);
+                  const convs = Number(stat.ccnt ?? 0);
+                  const convVal = Number(stat.convAmt ?? 0);
+                  await prisma.keyword.update({
+                    where: { id: kw.id },
+                    data: {
+                      impressions: imps,
+                      clicks,
+                      cost,
+                      conversions: convs,
+                      conversionValue: convVal,
+                      ctr: imps > 0 ? parseFloat((clicks / imps).toFixed(4)) : 0,
+                      roas: cost > 0 && convVal > 0 ? parseFloat((convVal / cost * 100).toFixed(2)) : null,
+                    },
+                  });
+                }
+              }
+            } catch (se: any) {
+              console.warn(`[Sync Phase2] stats 조회 실패 (batch ${si}):`, se.message);
+            }
+          }
+        }
+      } catch (se: any) {
+        console.warn(`[Sync Phase2] 성과지표 sync 실패:`, se.message);
+      }
     }
 
     console.log(`[Sync Phase2] "${adGroup.name}" 완료: 소재 ${result.ads}, 키워드 ${result.keywords}`);

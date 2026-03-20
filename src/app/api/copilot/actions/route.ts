@@ -21,8 +21,18 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const where: any = {
     organizationId: user.organizationId,
     ...(actionType && { actionType }),
-    ...(isApprovedStr !== null && { isApproved: isApprovedStr === 'true' }),
   };
+
+  // isApproved 필터: 'pending' = null (미결), 'true' = 승인됨, 'false' = 거부됨
+  if (isApprovedStr === 'pending') {
+    where.isApproved = null;
+  } else if (isApprovedStr !== null) {
+    where.isApproved = isApprovedStr === 'true';
+  }
+  // 기본값: 미결 항목만 (isApproved = null)
+  else {
+    where.isApproved = null;
+  }
 
   const [actions, total] = await Promise.all([
     prisma.aiActionLog.findMany({

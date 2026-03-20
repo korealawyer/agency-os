@@ -93,9 +93,20 @@ export class NaverAdsClient {
   }
 
   // ── 키워드별 통계 조회 ──
+  // 네이버 통계 API: POST /stats
+  // ids: 컵콘 ID 배열 (nccKeywordId), type: 디폴트 KEYWORD
   async getKeywordStats(keywordIds: string[], startDate: string, endDate: string) {
     return this.requestWithRetry<any[]>('POST', '/stats', {
       ids: keywordIds,
+      fields: ['clkCnt', 'impCnt', 'cpc', 'ccnt', 'salesAmt', 'convAmt'],
+      timeRange: { since: startDate, until: endDate },
+    });
+  }
+
+  // ── 광고그룹별 통계 조회 ──
+  async getAdGroupStats(adGroupIds: string[], startDate: string, endDate: string) {
+    return this.requestWithRetry<any[]>('POST', '/stats', {
+      ids: adGroupIds,
       fields: ['clkCnt', 'impCnt', 'cpc', 'ccnt', 'salesAmt', 'convAmt'],
       timeRange: { since: startDate, until: endDate },
     });
