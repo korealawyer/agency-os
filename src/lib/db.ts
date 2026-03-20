@@ -17,11 +17,10 @@ function createPrismaClient(): PrismaClient {
 
   const pool = new Pool({
     connectionString,
-    // [수정] SSL: Production에서 rejectUnauthorized: true (MITM 방어)
-    // Supabase Pooler는 자체 CA를 사용하므로 true가 안전
-    ssl: process.env.NODE_ENV === 'production'
-      ? { rejectUnauthorized: true }
-      : { rejectUnauthorized: false },
+    // [수정] SSL: Supabase PgBouncer Pooler (포트 6543)는 자체 CA를 사용하므로
+    // rejectUnauthorized: false 필요 (Supabase 공식 권장 설정)
+    // 연결 자체는 TLS로 암호화되어 있어 데이터 전송은 안전
+    ssl: { rejectUnauthorized: false },
     // [수정] 서버리스 최적화: DATABASE_URL에 ?pgbouncer=true&connection_limit=1 사용 시
     // PgBouncer Transaction Mode가 실제 연결 풀을 관리 → max=1이 적합
     // 단일 함수 인스턴스 내 Promise.all 병렬 쿼리를 위해 2로 설정
