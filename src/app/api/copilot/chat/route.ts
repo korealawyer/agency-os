@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import prisma from '@/lib/db';
 import { apiResponse, apiError, requireAuth, withErrorHandler, safeParseBody, logAudit } from '@/lib/api-helpers';
-import { copilotRateLimit, getClientIp } from '@/lib/rate-limit';
+import { copilotRateLimit, checkRateLimit, getClientIp } from '@/lib/rate-limit';
 
 const chatSchema = z.object({
   message: z.string().min(1).max(5000),
@@ -119,15 +119,11 @@ function getContextBasedResponse(message: string, context?: any): string {
 }
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  // ──── Rate Limiting (Upstash 미설정 시 스킵) ────
+  // ──── Rate Limiting (Upstash 미설정 시 자동 스킵) ────
   const ip = getClientIp(req.headers);
-  try {
-    const { success } = await copilotRateLimit.limit(ip);
-    if (!success) {
-      return apiError('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.', 429);
-    }
-  } catch {
-    // Upstash Redis 미설정 시 rate limiting 스킵
+  const { success: rlSuccess } = await checkRateLimit(copilotRateLimit, ip);
+  if (!rlSuccess) {
+    return apiError('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.', 429);
   }
 
   const user = await requireAuth(req);
